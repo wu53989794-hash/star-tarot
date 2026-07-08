@@ -255,25 +255,62 @@ function showPaymentModal() {
 
 
 function prepaidFlow() {
-    useReading();
-    revealCards();
-    state.readingStatus = "loading";
+
+    var desc = document.getElementById("draw-desc");
+
+    var orig = desc.textContent;
+
+    desc.textContent = "✦ 牌灵正在解读牌意...";
+
+    state.readingStatus = 'loading';
+
     fetch("/api/reading", {
+
         method: "POST",
+
         headers: { "Content-Type": "application/json" },
+
         body: JSON.stringify({
+
             cards: state.drawnCards,
+
             category: state.selectedCategory,
+
             question: state.question
+
         })
+
     })
+
     .then(function(r) { return r.json(); })
+
     .then(function(data) {
-        if (data.error) { state.readingStatus = "error"; }
-        else { state.readingResult = data.reading; state.readingStatus = "ready"; }
-        showReadingResult();
+
+        if (data.error) { state.readingStatus = 'error'; }
+
+        else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+
     })
-    .catch(function() { state.readingStatus = "error"; showReadingResult(); });
+
+    .catch(function() { state.readingStatus = 'error'; });
+
+    
+
+    (async function() {
+
+        for (var i = 0; i < 120; i++) {
+
+            await new Promise(function(r) { setTimeout(r, 500); });
+
+            if (state.readingStatus !== 'loading') break;
+        }
+        if (state.readingStatus === 'ready') {
+            _showRevealButton();
+        } else {
+            var desc = document.getElementById("draw-desc");
+            desc.textContent = "✦ 解读加载失败，请重新尝试 ✦";
+        }
+    })();
 }
 
 function closePaymentModal() {
@@ -459,7 +496,7 @@ function revealCards() {
 
         populateRevealedCards();
 
-
+        showReadingResult();
 
     }, 1800);
 
@@ -625,7 +662,7 @@ function startCheckout(plan) {
 
 function verifyPayment(sid, plan) {
 
-    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;var desc=document.getElementById("draw-desc");if(desc)desc.textContent="✦ 牌灵正在解读牌意...";var db=document.getElementById("btn-draw");if(db){db.querySelector(".btn-text").textContent="✦ 牌灵解读 ✦";}setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}showReadingResult();}).catch(function(){state.readingStatus="error";});showStep("step-draw");_showRevealButton();})();});}else{showStep("step-category");}}}).catch(function(){});
+    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;var desc=document.getElementById("draw-desc");if(desc)desc.textContent="✦ 牌灵正在解读牌意...";var db=document.getElementById("btn-draw");if(db){db.querySelector(".btn-text").textContent="✦ 牌灵解读 ✦";}setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}}).catch(function(){state.readingStatus="error";});(async function(){for(var i=0;i<120;i++){await new Promise(function(r){setTimeout(r,500)});if(state.readingStatus!=="loading")break;}showStep("step-draw");_showRevealButton();})();});}else{showStep("step-category");}}}).catch(function(){});
 
 }
 
