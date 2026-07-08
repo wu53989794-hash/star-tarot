@@ -39,21 +39,9 @@ function getCardImageUrl(card) {
 
 // ===== Step Navigation =====
 function showStep(stepId) {
-    document.querySelectorAll(".step").forEach(s => {
-        s.classList.remove("active");
-        s.style.backgroundImage = "";
-        s.style.backgroundSize = "";
-        s.style.backgroundPosition = "";
-    });
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
     document.getElementById(stepId).classList.add("active");
     window.scrollTo({ top: 0, behavior: "smooth" });
-    if (stepId !== "step-result") {
-        var n = Math.floor(Math.random() * 8) + 1;
-        var el = document.getElementById(stepId);
-        el.style.backgroundImage = "url(/static/bg/bg" + n + ".png)";
-        el.style.backgroundSize = "cover";
-        el.style.backgroundPosition = "center";
-    }
 }
 
 // ===== Category Selection =====
