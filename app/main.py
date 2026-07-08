@@ -101,3 +101,11 @@ async def get_all_cards_api():
             "element": card["element"]
         })
     return {"cards": cards}
+
+# WSGI wrapper for PythonAnywhere
+try:
+    from a2wsgi import ASGIMiddleware
+    wsgi = ASGIMiddleware(app)
+except ImportError:
+    wsgi = None
+application = wsgi
