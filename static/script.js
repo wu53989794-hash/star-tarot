@@ -191,14 +191,6 @@ async function processPayment() {
         if (state.readingStatus !== 'loading') break;
     }
 
-    await new Promise(function(r) { setTimeout(r, 300); });
-
-    btnLoading.style.display = "none";
-    btnText.style.display = "inline";
-    btnText.textContent = "\u2705 \u652f\u4ed8\u6210\u529f";
-
-    await new Promise(function(r) { setTimeout(r, 300); });
-
     closePaymentModal();
     revealCards();
 }
