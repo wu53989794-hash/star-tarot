@@ -47,6 +47,7 @@ async def draw_cards(req: DrawRequest):
     count = min(req.count, 3)
     if req.card_ids:
         drawn = [card for card in ALL_CARDS if card["id"] in req.card_ids]
+        random.shuffle(drawn)
     else:
         drawn = random.sample(ALL_CARDS, count)
 
