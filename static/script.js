@@ -119,15 +119,7 @@ async function drawCards() {
 // ===== Payment Modal =====
 function showPaymentModal() {
     prefetchReading();
-    (async function() {
-        var i = 0;
-        while (state.readingStatus === 'loading' && i < 60) {
-            await new Promise(function(r) { setTimeout(r, 500); });
-            i++;
-        }
-        await new Promise(function(r) { setTimeout(r, 500); });
-        revealCards();
-    })();
+    revealCards();
 }
 
 function closePaymentModal() {
@@ -198,7 +190,6 @@ async function processPayment() {
 
 // ===== Card Reveal =====
 function revealCards() {
-    // First flip the back-facing cards in step-draw
     const slots = document.querySelectorAll(".card-slot");
     slots.forEach((slot, i) => {
         setTimeout(() => {
@@ -206,11 +197,12 @@ function revealCards() {
         }, i * 200 + 200);
     });
 
-    // After flip animation, show step-result with reading already loaded
     setTimeout(() => {
         showStep("step-result");
         populateRevealedCards();
-        showReadingResult();
+        var rc = document.getElementById("reading-content");
+        rc.innerHTML = '<div class="reading-placeholder"><div class="reading-loading"><span class="dot-pulse"></span><span>星灵正在解读牌意...</span></div></div>';
+        checkReadingReady();
     }, 1800);
 }
 
@@ -268,9 +260,31 @@ function showReadingResult() {
         readingContent.innerHTML = html;
         document.getElementById("restart-section").style.display = "block";
     } else {
-        readingContent.innerHTML = '<p style="color:#e06060; text-align:center; padding:20px;">❌ 解读加载失败，请重新开始</p>';
+        readingContent.innerHTML = '<div style="color:#e06060; text-align:center; padding:20px;">❌ 解读加载失败</div><div style="text-align:center;"><button onclick="retryReading()" class="btn-secondary" style="display:inline-block;padding:10px 24px;font-size:0.9em;">🔄 重试</button></div>';
         document.getElementById("restart-section").style.display = "block";
     }
+}
+
+function retryReading() {
+    state.readingResult = null;
+    state.readingStatus = 'loading';
+    document.getElementById("restart-section").style.display = "none";
+    var rc = document.getElementById("reading-content");
+    rc.innerHTML = '<div class="reading-placeholder"><div class="reading-loading"><span class="dot-pulse"></span><span>星灵正在重新解读...</span></div></div>';
+    prefetchReading();
+    checkReadingReady();
+}
+
+function checkReadingReady() {
+    if (state.readingStatus === 'ready') {
+        showReadingResult();
+        return;
+    }
+    if (state.readingStatus === 'error') {
+        showReadingResult();
+        return;
+    }
+    setTimeout(checkReadingReady, 500);
 }
 
 // ===== Restart =====
