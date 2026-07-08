@@ -1,0 +1,124 @@
+﻿import os
+import json
+import httpx
+import logging
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+
+async def get_reading(cards_data, category, question="", api_key=None):
+    """调用 DeepSeek API 获取塔罗解读"""
+    if api_key is None:
+        api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+
+    if not api_key:
+        env_path = Path(__file__).parent.parent / ".env"
+        if env_path.exists():
+            for line in env_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line.startswith("DEEPSEEK_API_KEY="):
+                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    break
+
+    if not api_key:
+        return {"error": "DeepSeek API Key 未配置"}
+
+    from app.prompt import build_reading_prompt
+    prompt = build_reading_prompt(cards_data, category, question)
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": "你是一位精通塔罗牌的资深解读师，你的解读深邃、温暖、富有洞见。"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.8,
+        "max_tokens": 3072
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(DEEPSEEK_API_URL, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            content = result["choices"][0]["message"]["content"]
+            return {"reading": content}
+    except httpx.TimeoutException:
+        logger.error("DeepSeek API 请求超时")
+        return {"error": "解读请求超时，请稍后再试"}
+    except httpx.HTTPStatusError as e:
+        logger.error(f"DeepSeek API HTTP 错误: {e.response.status_code}")
+        return {"error": f"API 请求失败 (HTTP {e.response.status_code})"}
+    except Exception as e:
+        logger.error(f"DeepSeek API 调用异常: {str(e)}")
+        return {"error": f"解读生成失败: {str(e)}"}
+
+
+async def get_reading_stream(cards_data, category, question="", api_key=None):
+    """流式调用 DeepSeek API 获取塔罗解读"""
+    if api_key is None:
+        api_key = os.environ.get("DEEPSEEK_API_KEY", "")
+
+    if not api_key:
+        env_path = Path(__file__).parent.parent / ".env"
+        if env_path.exists():
+            for line in env_path.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line.startswith("DEEPSEEK_API_KEY="):
+                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    break
+
+    if not api_key:
+        yield f"data: {json.dumps({'error': 'DeepSeek API Key 未配置'})}\n\n"
+        return
+
+    from app.prompt import build_reading_prompt_stream
+    prompt = build_reading_prompt_stream(cards_data, category, question)
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": "你是一位精通塔罗牌的资深解读师，你的解读深邃、温暖、富有洞见。"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.8,
+        "max_tokens": 3072,
+        "stream": True
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", DEEPSEEK_API_URL, headers=headers, json=payload) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        data_str = line[6:]
+                        if data_str.strip() == "[DONE]":
+                            break
+                        try:
+                            data = json.loads(data_str)
+                            if "choices" in data and len(data["choices"]) > 0:
+                                delta = data["choices"][0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield f"data: {json.dumps({'content': content})}\n\n"
+                        except json.JSONDecodeError:
+                            continue
+        yield "data: [DONE]\n\n"
+    except Exception as e:
+        logger.error(f"流式调用异常: {str(e)}")
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+
