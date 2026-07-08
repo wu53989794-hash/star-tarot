@@ -13,6 +13,7 @@
             <div class="hero-content">
                 <h1 class="title-glow">✦ 星语塔罗 ✦</h1>
                 <p class="subtitle">倾听宇宙的声音，指引你的未来</p>
+                <div id="remaining-badge" style="display:none;margin-top:10px;font-size:0.85em;color:#a090b0;letter-spacing:1px;">剩余 <span id="remaining-count" style="color:#d4a843;font-weight:bold;">0</span> 次占卜</div>
             </div>
         </header>
 
@@ -144,6 +145,33 @@
                 </button>
             </div>
         </section>
+
+        <!-- Pricing Modal -->
+<div id="pricing-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal-backdrop" onclick="closePricingModal()"></div>
+    <div class="modal-content" style="max-width:420px;">
+        <button class="modal-close" onclick="closePricingModal()">&times;</button>
+        <div style="font-size:2.5em;margin-bottom:10px;">🔮</div>
+        <h2 style="color:#d4a843;margin-bottom:6px;font-size:1.2em;">选择占卜套餐</h2>
+        <p style="color:#a090b0;font-size:0.85em;margin-bottom:20px;">购买后不限时间，按次扣减</p>
+        <div style="display:flex;gap:12px;margin-bottom:20px;">
+            <div onclick="startCheckout('2_readings')" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(212,168,67,0.2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s;">
+                <div style="font-size:0.85em;color:#a090b0;margin-bottom:8px;">两次占卜</div>
+                <div style="font-size:1.8em;color:#d4a843;font-weight:bold;">&yen;14.99</div>
+                <div style="font-size:0.7em;color:#7a6a8a;margin-top:6px;">平均 &yen;7.50/次</div>
+                <div style="margin-top:12px;padding:8px 16px;background:rgba(212,168,67,0.1);border-radius:20px;color:#d4a843;font-size:0.8em;">选择</div>
+            </div>
+            <div onclick="startCheckout('3_readings')" style="flex:1;background:rgba(212,168,67,0.08);border:1.5px solid #d4a843;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s;position:relative;">
+                <div style="position:absolute;top:-8px;right:-8px;background:#d4a843;color:#1a0a2e;font-size:0.65em;padding:2px 8px;border-radius:8px;font-weight:bold;">推荐</div>
+                <div style="font-size:0.85em;color:#a090b0;margin-bottom:8px;">三次占卜</div>
+                <div style="font-size:1.8em;color:#d4a843;font-weight:bold;">&yen;19.99</div>
+                <div style="font-size:0.7em;color:#7a6a8a;margin-top:6px;">平均 &yen;6.66/次</div>
+                <div style="margin-top:12px;padding:8px 16px;background:#d4a843;border-radius:20px;color:#1a0a2e;font-size:0.8em;font-weight:bold;">选择</div>
+            </div>
+        </div>
+        <p style="font-size:0.7em;color:#6a5a7a;">支付由 Stripe 安全处理</p>
+    </div>
+</div>
 
         <!-- Step 3: Payment Modal -->
         <div id="payment-overlay" class="modal-overlay" style="display:none;">

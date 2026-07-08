@@ -59,6 +59,20 @@ async def draw_cards(req: DrawRequest):
 
     return {"cards": result}
 
+class CreateCheckoutRequest(BaseModel):
+    plan: str
+    base_url: str = ""
+
+class VerifyPaymentRequest(BaseModel):
+    session_id: str
+    plan: str
+
+class CheckUsageRequest(BaseModel):
+    purchase_id: str
+
+class UseReadingRequest(BaseModel):
+    purchase_id: str
+
 class ReadingStreamRequest(BaseModel):
     cards: list
     category: str
@@ -98,6 +112,56 @@ async def get_all_cards_api():
     """获取所有塔罗牌完整数据"""
     return {"cards": ALL_CARDS}
 
+
+# Stripe payment endpoints
+from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining
+
+@app.post("/api/create-checkout")
+async def create_checkout(req: CreateCheckoutRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    base_url = req.base_url or "http://127.0.0.1:5678"
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": "cny",
+                    "product_data": {"name": plan_info["name"]},
+                    "unit_amount": plan_info["amount_cny"],
+                },
+                "quantity": 1,
+            }],
+            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=base_url + "/",
+        )
+        return {"url": session.url, "session_id": session.id}
+    except Exception as e:
+        logger.error(f"Stripe checkout error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/verify-payment")
+async def verify_payment(req: VerifyPaymentRequest):
+    try:
+        session = stripe.checkout.Session.retrieve(req.session_id)
+        if session.payment_status == "paid":
+            pid = record(req.session_id, req.plan)
+            return {"success": True, "purchase_id": pid, "remaining": PLANS[req.plan]["readings"]}
+        return {"success": False, "error": "payment not complete"}
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=400)
+
+@app.post("/api/check-usage")
+async def check_usage(req: CheckUsageRequest):
+    r = get_remaining(req.purchase_id)
+    return {"remaining": r}
+
+@app.post("/api/use-reading")
+async def use_reading(req: UseReadingRequest):
+    ok, r = use_one(req.purchase_id)
+    return {"success": ok, "remaining": r}
+
 # WSGI wrapper for PythonAnywhere
 try:
     from a2wsgi import ASGIMiddleware
@@ -105,6 +169,56 @@ try:
 except ImportError:
     wsgi = None
 application = wsgi
+
+# Stripe payment endpoints
+from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining
+
+@app.post("/api/create-checkout")
+async def create_checkout(req: CreateCheckoutRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    base_url = req.base_url or "http://127.0.0.1:5678"
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": "cny",
+                    "product_data": {"name": plan_info["name"]},
+                    "unit_amount": plan_info["amount_cny"],
+                },
+                "quantity": 1,
+            }],
+            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=base_url + "/",
+        )
+        return {"url": session.url, "session_id": session.id}
+    except Exception as e:
+        logger.error(f"Stripe checkout error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/verify-payment")
+async def verify_payment(req: VerifyPaymentRequest):
+    try:
+        session = stripe.checkout.Session.retrieve(req.session_id)
+        if session.payment_status == "paid":
+            pid = record(req.session_id, req.plan)
+            return {"success": True, "purchase_id": pid, "remaining": PLANS[req.plan]["readings"]}
+        return {"success": False, "error": "payment not complete"}
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=400)
+
+@app.post("/api/check-usage")
+async def check_usage(req: CheckUsageRequest):
+    r = get_remaining(req.purchase_id)
+    return {"remaining": r}
+
+@app.post("/api/use-reading")
+async def use_reading(req: UseReadingRequest):
+    ok, r = use_one(req.purchase_id)
+    return {"success": ok, "remaining": r}
+
 # WSGI wrapper for PythonAnywhere
 def _wsgi_app(environ, start_response):
     """Convert ASGI FastAPI to WSGI for PythonAnywhere"""

@@ -7,6 +7,8 @@ let state = {
     selectedCardIndices: [],
     isProcessing: false,
     readingResult: null,
+    purchaseId: localStorage.getItem("tarot_purchase") || "",
+    remaining: 0,
     readingStatus: 'idle'
 };
 
@@ -120,8 +122,39 @@ async function drawCards() {
 
 // ===== Payment Modal =====
 function showPaymentModal() {
-    document.getElementById("payment-overlay").style.display = "flex";
-    document.body.style.overflow = "hidden";
+    if (state.remaining > 0) {
+        prepaidFlow();
+    } else {
+        document.getElementById("payment-overlay").style.display = "flex";
+        document.body.style.overflow = "hidden";
+    }
+}
+
+function prepaidFlow() {
+    state.readingStatus = 'loading';
+    fetch("/api/reading", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            cards: state.drawnCards,
+            category: state.selectedCategory,
+            question: state.question
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { state.readingStatus = 'error'; }
+        else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+    })
+    .catch(function() { state.readingStatus = 'error'; });
+    
+    (async function() {
+        for (var i = 0; i < 120; i++) {
+            await new Promise(function(r) { setTimeout(r, 500); });
+            if (state.readingStatus !== 'loading') break;
+        }
+        revealCards();
+    })();
 }
 
 function closePaymentModal() {
@@ -307,7 +340,50 @@ function restartReading() {
     showStep("step-category");
 }
 
+// ===== Pricing & Usage
+function showPricingModal() {
+    document.getElementById("pricing-overlay").style.display = "flex";
+    document.body.style.overflow = "hidden";
+}
+function closePricingModal() {
+    document.getElementById("pricing-overlay").style.display = "none";
+    document.body.style.overflow = "";
+}
+function startCheckout(plan) {
+    fetch("/api/create-checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+    .then(function(r){return r.json()}).then(function(d){if(d.url)window.location.href=d.url;else alert("创建支付失败");})
+    .catch(function(){alert("支付服务异常");});
+}
+function verifyPayment(sid, plan) {
+    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})})
+    .then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();showStep("step-category");}})
+    .catch(function(){});
+}
+function updateRemainingBadge() {
+    var el=document.getElementById("remaining-badge");var ct=document.getElementById("remaining-count");
+    if(state.remaining>0){el.style.display="block";ct.textContent=state.remaining;}else{el.style.display="none";}
+}
+function useReading() {
+    if(!state.purchaseId||state.remaining<=0){showPricingModal();return false;}
+    fetch("/api/use-reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:state.purchaseId})})
+    .then(function(r){return r.json()}).then(function(d){if(d.success){state.remaining=d.remaining;updateRemainingBadge();}});
+    return true;
+}
+
 // ===== Initialize =====
+// Check Stripe redirect and existing purchase
+(function() {
+    var p = new URLSearchParams(window.location.search);
+    var sid = p.get("session_id");
+    var plan = p.get("plan");
+    if (sid && plan) { verifyPayment(sid, plan); window.history.replaceState({}, "", "/"); }
+    var pid = localStorage.getItem("tarot_purchase");
+    if (pid) {
+        fetch("/api/check-usage", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:pid})})
+        .then(function(r){return r.json()}).then(function(d){state.remaining=d.remaining;updateRemainingBadge();});
+    }
+})();
+
 document.addEventListener("DOMContentLoaded", () => {
     console.log("✦ 星语塔罗 ✦ 已加载");
 });
@@ -405,6 +481,8 @@ function toggleCardSelection(index) {
 
 function confirmCardSelection() {
     if (state.selectedCardIndices.length !== 3) return;
+    if (state.remaining <= 0) { showPricingModal(); return; }
+    if (!useReading()) return;
     state.isProcessing = true;
     var ids = state.selectedCardIndices.map(function(i) { return state.allCards[i].id; });
     var btn = document.getElementById("btn-browse-draw");
