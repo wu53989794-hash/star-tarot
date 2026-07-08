@@ -350,14 +350,14 @@ function closePricingModal() {
     document.body.style.overflow = "";
 }
 function startCheckout(plan) {
+    localStorage.setItem("tarot_cat", state.selectedCategory || "");
+    localStorage.setItem("tarot_q", state.question || "");
     fetch("/api/create-checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
     .then(function(r){return r.json()}).then(function(d){if(d.url)window.location.href=d.url;else alert("创建支付失败");})
     .catch(function(){alert("支付服务异常");});
 }
 function verifyPayment(sid, plan) {
-    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})})
-    .then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();showStep("step-category");}})
-    .catch(function(){});
+    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";showStep("step-browse");document.querySelectorAll(".category-btn").forEach(function(b){b.classList.toggle("selected",b.dataset.category===cat);});document.getElementById("browse-desc").textContent="占卜："+(CATEGORY_NAMES[cat]||cat)+" —— 滑动浏览，点击选牌";loadBrowseCards();localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");}else{showStep("step-category");}}}).catch(function(){});
 }
 function updateRemainingBadge() {
     var el=document.getElementById("remaining-badge");var ct=document.getElementById("remaining-count");
