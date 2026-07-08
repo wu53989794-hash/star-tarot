@@ -122,12 +122,8 @@ async function drawCards() {
 
 // ===== Payment Modal =====
 function showPaymentModal() {
-    if (state.remaining > 0) {
-        prepaidFlow();
-    } else {
-        document.getElementById("payment-overlay").style.display = "flex";
-        document.body.style.overflow = "hidden";
-    }
+    if (state.remaining > 0) { prepaidFlow(); }
+    else { showPricingModal(); }
 }
 
 function prepaidFlow() {
