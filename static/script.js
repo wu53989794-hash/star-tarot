@@ -73,7 +73,6 @@ async function drawCards() {
         state.drawnCards = data.cards;
 
 
-        // Set card front images
         data.cards.forEach(function(card, i) {
             var slot = document.getElementById("slot-" + i);
             if (slot) {
@@ -119,9 +118,16 @@ async function drawCards() {
 
 // ===== Payment Modal =====
 function showPaymentModal() {
-    document.getElementById("payment-overlay").style.display = "flex";
-    document.body.style.overflow = "hidden";
     prefetchReading();
+    (async function() {
+        var i = 0;
+        while (state.readingStatus === 'loading' && i < 60) {
+            await new Promise(function(r) { setTimeout(r, 500); });
+            i++;
+        }
+        await new Promise(function(r) { setTimeout(r, 500); });
+        revealCards();
+    })();
 }
 
 function closePaymentModal() {
@@ -373,7 +379,6 @@ async function doDraw() {
         state.drawnCards = data.cards;
 
 
-        // Set card front images
         data.cards.forEach(function(card, i) {
             var slot = document.getElementById("slot-" + i);
             if (slot) {
@@ -384,19 +389,6 @@ async function doDraw() {
                 }
             }
         });
-
-        // Set card front images
-        data.cards.forEach(function(card, i) {
-            var slot = document.getElementById("slot-" + i);
-            if (slot) {
-                var front = slot.querySelector(".card-front");
-                if (front) {
-                    var img = front.querySelector("img");
-                    if (img) img.src = getCardImageUrl(card);
-                }
-            }
-        });
-
         // Transition to draw step for the reveal animation
         showStep("step-draw");
         document.getElementById("draw-desc").textContent =
