@@ -125,7 +125,7 @@ async def create_checkout(req: CreateCheckoutRequest):
     try:
         session = stripe.checkout.Session.create(
             mode="payment",
-            payment_method_types=["card", "wechat_pay", "alipay"],
+            payment_method_types=["card", "alipay"],
             line_items=[{
                 "price_data": {
                     "currency": "cny",
