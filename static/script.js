@@ -191,6 +191,17 @@ async function processPayment() {
         if (state.readingStatus !== 'loading') break;
     }
 
+    // Quick payment simulation
+    await new Promise(function(r) { setTimeout(r, 500); });
+
+    btnLoading.style.display = "none";
+    btnText.style.display = "inline";
+    btnText.textContent = "✅ 支付成功";
+
+    await new Promise(function(r) { setTimeout(r, 300); });
+
+    // Re-enable button for next use
+    btnPay.disabled = false;
     closePaymentModal();
     revealCards();
 }
