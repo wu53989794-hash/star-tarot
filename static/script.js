@@ -343,7 +343,7 @@ function updateRemainingBadge() {
     if(state.remaining>0){el.style.display="block";ct.textContent=state.remaining;}else{el.style.display="none";}
 }
 function useReading() {
-    if(!state.purchaseId||state.remaining<=0){showPricingModal();return false;}
+    if(!state.purchaseId&&!localStorage.getItem("tarot_purchase")){showPricingModal();return false;}if(state.remaining<=0&&localStorage.getItem("tarot_purchase")){fetch("/api/check-usage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:localStorage.getItem("tarot_purchase")})}).then(function(r){return r.json()}).then(function(d){state.remaining=d.remaining;if(d.remaining<=0){}});}if(!state.purchaseId){state.purchaseId=localStorage.getItem("tarot_purchase");}
     fetch("/api/use-reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:state.purchaseId})})
     .then(function(r){return r.json()}).then(function(d){if(d.success){state.remaining=d.remaining;updateRemainingBadge();}});
     return true;
