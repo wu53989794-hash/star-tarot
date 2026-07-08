@@ -651,3 +651,51 @@ body {
     align-items:center; justify-content:center; z-index:3;
 }
 .browse-card.selected .badge { display:flex; }
+
+
+/* ===== Random Bg Step Overlay ===== */
+.step.active::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 0;
+    pointer-events: none;
+}
+.step {
+    position: relative;
+}
+.step > * {
+    position: relative;
+    z-index: 1;
+}
+#step-result {
+    background: transparent !important;
+}
+#step-result::before {
+    display: none !important;
+}
+
+/* ===== Glass Buttons ===== */
+.btn-primary, .btn-secondary, .btn-pay, .category-btn {
+    background: rgba(255,255,255,0.07) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2) !important;
+    color: #e8dcc8 !important;
+    transition: all 0.3s ease !important;
+}
+.btn-primary:hover, .btn-secondary:hover, .btn-pay:hover, .category-btn:hover {
+    background: rgba(255,255,255,0.14) !important;
+    border-color: rgba(212,168,67,0.5) !important;
+    box-shadow: 0 6px 32px rgba(0,0,0,0.3) !important;
+    transform: translateY(-2px);
+}
+.category-btn.selected {
+    border-color: #d4a843 !important;
+    box-shadow: 0 0 20px rgba(212,168,67,0.2) !important;
+}
+.btn-primary .btn-text {
+    color: #e8dcc8 !important;
+}
