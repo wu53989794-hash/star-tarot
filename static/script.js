@@ -30,13 +30,13 @@ const CATEGORY_NAMES = {
 
     fortune: "短期运程",
 
-    love: "?情??",
+    love: "爱情趋势",
 
-    career: "事?",
+    career: "事业",
 
     friendship: "友情",
 
-    family: "家庭?系",
+    family: "家庭关系",
 
     other: "其他"
 
@@ -224,9 +224,9 @@ async function drawCards() {
 
     } catch (err) {
 
-        console.error("抽牌失?:", err);
+        console.error("抽牌失败:", err);
 
-        alert("抽牌失?，??查服?器是否正常?行");
+        alert("抽牌失败，请检查服务器是否正常运行");
 
     } finally {
 
@@ -352,7 +352,7 @@ function prefetchReading() {
 
             state.readingStatus = 'error';
 
-            preview.innerHTML = '<div style="color:#e06060;font-size:0.8rem;text-align:center;">? 解?加?中...</div>';
+            preview.innerHTML = '<div style="color:#e06060;font-size:0.8rem;text-align:center;">✦ 解读加载中...</div>';
 
             return;
 
@@ -457,7 +457,7 @@ async function processPayment() {
 
     btnText.style.display = "inline";
 
-    btnText.textContent = "? 支付成功";
+    btnText.textContent = "✓ 支付成功";
 
 
 
@@ -555,7 +555,7 @@ function showReadingResult() {
 
     } else {
 
-        readingContent.innerHTML = '<p style="color:#e06060; text-align:center; padding:20px;">? 解?加?失?，?重新?始</p>';
+        readingContent.innerHTML = '<p style="color:#e06060; text-align:center; padding:20px;">✦ 解读加载失败，请重新开始</p>';
 
         document.getElementById("restart-section").style.display = "block";
 
@@ -639,9 +639,9 @@ function startCheckout(plan) {
 
     fetch("/api/create-checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
 
-    .then(function(r){return r.json()}).then(function(d){if(d.url)window.location.href=d.url;else alert("?建支付失?");})
+    .then(function(r){return r.json()}).then(function(d){if(d.url)window.location.href=d.url;else alert("创建支付失败");})
 
-    .catch(function(){alert("支付服?异常");});
+    .catch(function(){alert("支付服务异常");});
 
 }
 
@@ -702,7 +702,7 @@ function useReading() {
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    console.log("? 星?塔? ? 已加?");
+    console.log("✦ 星语塔罗 ✦ 已加载");
 
 });
 
@@ -746,7 +746,7 @@ function confirmQuestion() {
 
     document.getElementById("browse-desc").textContent =
 
-        "占卜：" + CATEGORY_NAMES[state.selectedCategory] + " —— 滑???，??抽牌";
+        "占卜：" + CATEGORY_NAMES[state.selectedCategory] + " —— 滑动浏览，然后抽牌";
 
     loadBrowseCards();
 
