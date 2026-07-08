@@ -256,6 +256,8 @@ function prepaidFlow() {
     state.readingStatus = 'loading';
     var d = document.getElementById("draw-desc");
     if (d) d.textContent = "✦ 牌灵正在解读牌意...✦";
+    var dbBtn = document.getElementById("btn-draw");
+    if (dbBtn) dbBtn.disabled = true;
 
     fetch("/api/reading", {
 
@@ -384,44 +386,7 @@ async function processPayment() {
 
     // Start fetching reading (no preview shown anywhere)
 
-    state.readingStatus = 'loading';
-
-    fetch("/api/reading", {
-
-        method: "POST",
-
-        headers: { "Content-Type": "application/json" },
-
-        body: JSON.stringify({
-
-            cards: state.drawnCards,
-
-            category: state.selectedCategory,
-
-            question: state.question
-
-        })
-
-    })
-
-    .then(function(r) { return r.json(); })
-
-    .then(function(data) {
-
-        if (data.error) { state.readingStatus = 'error'; }
-
-        else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
-        showStep("step-result");
-        populateRevealedCards();
-        showReadingResult();
-
-    })
-
-    .catch(function() { state.readingStatus = 'error'; showReadingResult(); });
-
-
-
-    // Wait for reading
+    // Wait (reading already started in prepaidFlow)
 
     for (var i = 0; i < 120; i++) {
 
@@ -879,6 +844,8 @@ function toggleCardSelection(index) {
 function confirmCardSelection() {
 
     if (state.selectedCardIndices.length !== 3) return;
+    if (state.isProcessing) return;
+    state.isProcessing = true;
 
     if (state.remaining > 0) { _startDraw(); return; }
 
