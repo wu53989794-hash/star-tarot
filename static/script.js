@@ -333,7 +333,7 @@ function startCheckout(plan) {
     .catch(function(){alert("支付服务异常");});
 }
 function verifyPayment(sid, plan) {
-    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}}).catch(function(){state.readingStatus="error";});(async function(){for(var i=0;i<120;i++){await new Promise(function(r){setTimeout(r,500)});if(state.readingStatus!=="loading")break;}revealCards();})();});}else{showStep("step-category");}}}).catch(function(){});
+    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}}).catch(function(){state.readingStatus="error";});(async function(){for(var i=0;i<120;i++){await new Promise(function(r){setTimeout(r,500)});if(state.readingStatus!=="loading")break;}useReading();revealCards();})();});}else{showStep("step-category");}}}).catch(function(){});
 }
 function updateRemainingBadge() {
     var el=document.getElementById("remaining-badge");var ct=document.getElementById("remaining-count");
@@ -457,12 +457,19 @@ function toggleCardSelection(index) {
 
 function confirmCardSelection() {
     if (state.selectedCardIndices.length !== 3) return;
-    if (state.remaining <= 0) { showPricingModal(); return; }
+    if (state.remaining > 0) { _startDraw(); return; }
+    var pid = localStorage.getItem("tarot_purchase");
+    if (!pid) { showPricingModal(); return; }
     state.isProcessing = true;
-    var ids = state.selectedCardIndices.map(function(i) { return state.allCards[i].id; });
+    var btn = document.getElementById("btn-browse-draw");
+    btn.querySelector(".btn-text").textContent = "\u2726 \u724c\u7075\u6b63\u5728\u89e3\u8bfb \u2726";
+    fetch("/api/check-usage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:pid})}).then(function(r){return r.json()}).then(function(d){state.remaining=d.remaining;state.purchaseId=pid;updateRemainingBadge();if(d.remaining>0){_startDraw();}else{btn.disabled=false;btn.querySelector(".btn-text").textContent="\u2726 \u5df2\u9009 0/3";state.isProcessing=false;showPricingModal();}});
+}
+
+function _startDraw() {
     var btn = document.getElementById("btn-browse-draw");
     btn.disabled = true;
-    btn.querySelector(".btn-text").textContent = "\u2726 \u661f\u7075\u6b63\u5728\u6d17\u724c \u2726";
+    btn.querySelector(".btn-text").textContent = "\u2726 \u724c\u7075\u6b63\u5728\u89e3\u8bfb \u2726";
 
     fetch("/api/draw", {
         method: "POST",
