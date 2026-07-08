@@ -414,7 +414,7 @@ function confirmCardSelection() {
     fetch("/api/draw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count: 3, card_ids: ids })
+        body: JSON.stringify({ count: 3 })
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
