@@ -36,7 +36,7 @@ async def get_reading(cards_data, category, question="", api_key=None):
     payload = {
         "model": "deepseek-chat",
         "messages": [
-            {"role": "system", "content": "你是一位精通塔罗牌的资深解读师，你的解读深邃、温暖、富有洞见。"},
+            {"role": "system", "content": "你是一位冷静、客观的塔罗解牌师。你的解读以第三方视角冷静分析牌面，不代入第一或第二人称。"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.8,
@@ -90,7 +90,7 @@ async def get_reading_stream(cards_data, category, question="", api_key=None):
     payload = {
         "model": "deepseek-chat",
         "messages": [
-            {"role": "system", "content": "你是一位精通塔罗牌的资深解读师，你的解读深邃、温暖、富有洞见。"},
+            {"role": "system", "content": "你是一位冷静、客观的塔罗解牌师。你的解读以第三方视角冷静分析牌面，不代入第一或第二人称。"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.8,
