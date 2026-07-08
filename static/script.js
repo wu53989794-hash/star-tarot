@@ -340,29 +340,31 @@ async function loadBrowseCards() {
     try {
         const res = await fetch("/api/cards");
         const data = await res.json();
+        state.allCards = data.cards;
+        state.selectedCardIndices = [];
+        document.getElementById("btn-browse-draw").querySelector(".btn-text").textContent = "\u2726 \u5df2\u9009 0/3";
         const track = document.getElementById("card-browse-track");
         const total = document.getElementById("browse-total");
         total.textContent = data.cards.length;
 
         track.innerHTML = "";
-        data.cards.forEach((card, i) => {
-            const div = document.createElement("div");
+        data.cards.forEach(function(card, i) {
+            var div = document.createElement("div");
             div.className = "browse-card";
-            div.innerHTML = `<div class="browse-card-back" style="background-image:url(/static/card-back.jpg)"></div>`;
-            // stagger reveal animation
+            div.setAttribute("data-index", i);
+            div.onclick = function() { toggleCardSelection(i); };
+            div.innerHTML = "<div class=\"browse-card-back\" style=\"background-image:url(\/static\/card-back.jpg)\"><\/div><div class=\"badge\"><\/div>";
             div.style.animationDelay = (i * 15) + "ms";
             track.appendChild(div);
         });
 
-        // Update dot indicator based on scroll
         track.addEventListener("scroll", updateBrowseDot);
         updateBrowseDot();
 
     } catch (err) {
-        console.error("加载牌失败:", err);
+        console.error("Failed to load cards:", err);
     }
 }
-
 function updateBrowseDot() {
     const track = document.getElementById("card-browse-track");
     const dot = document.getElementById("browse-dot");
