@@ -3,6 +3,8 @@ let state = {
     selectedCategory: null,
     question: "",
     drawnCards: [],
+    allCards: [],
+    selectedCardIndices: [],
     isProcessing: false,
     readingResult: null,
     readingStatus: 'idle'
@@ -291,6 +293,7 @@ function restartReading() {
     const track = document.getElementById("card-browse-track");
     if (track) track.innerHTML = "";
     state.drawnCards = [];
+    state.selectedCardIndices = [];
     state.isProcessing = false;
 
     // Reset UI
@@ -369,24 +372,51 @@ function updateBrowseDot() {
     dot.textContent = pos + "%";
 }
 
-async function doDraw() {
-    if (!state.selectedCategory) return;
+function toggleCardSelection(index) {
+    var idx = state.selectedCardIndices.indexOf(index);
+    if (idx >= 0) {
+        state.selectedCardIndices.splice(idx, 1);
+    } else {
+        if (state.selectedCardIndices.length >= 3) return;
+        state.selectedCardIndices.push(index);
+    }
+    var cards = document.querySelectorAll(".browse-card");
+    cards.forEach(function(el, i) {
+        el.classList.toggle("selected", state.selectedCardIndices.indexOf(i) >= 0);
+        var badge = el.querySelector(".badge");
+        if (badge) {
+            var pos = state.selectedCardIndices.indexOf(i);
+            badge.textContent = pos >= 0 ? (pos + 1) : "";
+        }
+    });
+    var btn = document.getElementById("btn-browse-draw");
+    var txt = btn.querySelector(".btn-text");
+    if (state.selectedCardIndices.length === 3) {
+        txt.textContent = "\u2714 \u786e\u8ba4\u9009\u724c";
+        btn.disabled = false;
+        btn.onclick = confirmCardSelection;
+    } else {
+        txt.textContent = "\u2726 \u5df2\u9009 " + state.selectedCardIndices.length + "/3";
+        btn.onclick = function() {};
+    }
+}
 
-    const btn = document.getElementById("btn-browse-draw");
-    btn.disabled = true;
-    btn.querySelector(".btn-text").textContent = "✦ 星灵正在洗牌 ✦";
+function confirmCardSelection() {
+    if (state.selectedCardIndices.length !== 3) return;
     state.isProcessing = true;
+    var ids = state.selectedCardIndices.map(function(i) { return state.allCards[i].id; });
+    var btn = document.getElementById("btn-browse-draw");
+    btn.disabled = true;
+    btn.querySelector(".btn-text").textContent = "\u2726 \u661f\u7075\u6b63\u5728\u6d17\u724c \u2726";
 
-    try {
-        const res = await fetch("/api/draw", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ count: 3 })
-        });
-        const data = await res.json();
+    fetch("/api/draw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count: 3, card_ids: ids })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
         state.drawnCards = data.cards;
-
-
         data.cards.forEach(function(card, i) {
             var slot = document.getElementById("slot-" + i);
             if (slot) {
@@ -397,37 +427,32 @@ async function doDraw() {
                 }
             }
         });
-        // Transition to draw step for the reveal animation
         showStep("step-draw");
         document.getElementById("draw-desc").textContent =
-            "占卜主题：" + CATEGORY_NAMES[state.selectedCategory] + " —— 你的牌已抽好";
-
-        // Reset slots
-        document.querySelectorAll(".card-slot").forEach(slot => {
+            "\u535c\u535c\u4e3b\u9898\uff1a" + CATEGORY_NAMES[state.selectedCategory] + " \u2014\u2014 \u4f60\u7684\u724c\u5df2\u62bd\u597d";
+        document.querySelectorAll(".card-slot").forEach(function(slot) {
             slot.classList.remove("flipped", "draw-animate");
         });
-
-        await new Promise(r => setTimeout(r, 100));
-
-        // Animate cards appearing
-        const slots = document.querySelectorAll(".card-slot");
-        slots.forEach((slot, i) => {
-            setTimeout(() => {
-                slot.classList.add("draw-animate");
-            }, i * 200);
-        });
-
-        await new Promise(r => setTimeout(r, 1500));
-        showPaymentModal();
-
-    } catch (err) {
-        console.error("抽牌失败:", err);
-        alert("抽牌失败，请检查服务器是否正常运行");
-   } finally {
-       btn.disabled = false;
-       btn.querySelector(".btn-text").textContent = "✦ 抽三张牌 ✦";
-       state.isProcessing = false;
-   }
+        setTimeout(function() {
+            var slots = document.querySelectorAll(".card-slot");
+            slots.forEach(function(slot, i) {
+                setTimeout(function() { slot.classList.add("draw-animate"); }, i * 200);
+            });
+        }, 100);
+        setTimeout(function() {
+            showPaymentModal();
+            btn.disabled = false;
+            btn.querySelector(".btn-text").textContent = "\u2726 \u5df2\u9009 0/3";
+            state.isProcessing = false;
+        }, 1800);
+    })
+    .catch(function(err) {
+        console.error("\u9009\u724c\u5931\u8d25:", err);
+        alert("\u9009\u724c\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5");
+        btn.disabled = false;
+        btn.querySelector(".btn-text").textContent = "\u2726 \u5df2\u9009 0/3";
+        state.isProcessing = false;
+    });
 }
 
 

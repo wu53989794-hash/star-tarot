@@ -638,3 +638,16 @@ body {
 .card-img.reversed {
     transform: rotate(180deg);
 }
+
+/* Browse card selected */
+.browse-card.selected {
+    border-color: #d4a843 !important;
+    box-shadow: 0 0 20px rgba(212,168,67,0.5), inset 0 0 15px rgba(212,168,67,0.15) !important;
+    transform: translateY(-8px) scale(1.08);
+}
+.browse-card .badge {
+    display: none; position: absolute; top:-6px; right:-6px; width:24px; height:24px;
+    background:#d4a843; color:#1a0a2e; border-radius:50%; font-size:0.75em; font-weight:bold;
+    align-items:center; justify-content:center; z-index:3;
+}
+.browse-card.selected .badge { display:flex; }

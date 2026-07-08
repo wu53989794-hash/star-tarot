@@ -19,6 +19,7 @@ app = FastAPI(title="星语塔罗", description="塔罗占卜 AI 深度解读")
 # 请求模型
 class DrawRequest(BaseModel):
     count: int = 3
+    card_ids: list = None
 
 class ReadingRequest(BaseModel):
     cards: list
@@ -44,7 +45,10 @@ async def health():
 async def draw_cards(req: DrawRequest):
     """随机抽取三张牌，每张牌随机正位或逆位"""
     count = min(req.count, 3)
-    drawn = random.sample(ALL_CARDS, count)
+    if req.card_ids:
+        drawn = [card for card in ALL_CARDS if card["id"] in req.card_ids]
+    else:
+        drawn = random.sample(ALL_CARDS, count)
 
     result = []
     for card in drawn:
@@ -90,17 +94,8 @@ async def reading(req: ReadingRequest):
 
 @app.get("/api/cards")
 async def get_all_cards_api():
-    """获取所有塔罗牌数据（不含正逆位，仅基本信息）"""
-    cards = []
-    for card in ALL_CARDS:
-        cards.append({
-            "id": card["id"],
-            "name": card["name"],
-            "name_en": card["name_en"],
-            "keywords": card["keywords"],
-            "element": card["element"]
-        })
-    return {"cards": cards}
+    """获取所有塔罗牌完整数据"""
+    return {"cards": ALL_CARDS}
 
 # WSGI wrapper for PythonAnywhere
 try:
