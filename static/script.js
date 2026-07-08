@@ -271,7 +271,7 @@ function showReadingResult() {
     // Then show reading
     const readingContent = document.getElementById("reading-content");
     const readingCategory = document.getElementById("reading-category");
-    readingCategory.textContent = "卜卜： " + (CATEGORY_NAMES[state.selectedCategory] || state.selectedCategory);
+    readingCategory.textContent = "占卜： " + (CATEGORY_NAMES[state.selectedCategory] || state.selectedCategory);
 
     if (state.readingResult) {
         const html = markdownToHtml(state.readingResult);
