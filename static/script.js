@@ -280,6 +280,7 @@ function prepaidFlow() {
         if (data.error) { state.readingStatus = 'error'; }
 
         else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+        showReadingResult();
 
     })
 
@@ -422,6 +423,7 @@ async function processPayment() {
         if (data.error) { state.readingStatus = 'error'; }
 
         else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+        showReadingResult();
 
     })
 
