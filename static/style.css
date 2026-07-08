@@ -651,3 +651,172 @@ body {
     align-items:center; justify-content:center; z-index:3;
 }
 .browse-card.selected .badge { display:flex; }
+
+/* ===== Tarot Decorations ===== */
+
+/* Section title ornaments */
+.step-title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+}
+.step-title::before {
+    content: "";
+    display: inline-block;
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(to left, rgba(212,168,67,0.5), transparent);
+    margin-right: 16px;
+}
+.step-title::after {
+    content: "";
+    display: inline-block;
+    width: 40px;
+    height: 1px;
+    background: linear-gradient(to right, rgba(212,168,67,0.5), transparent);
+    margin-left: 16px;
+}
+
+/* Category btn hover glow enhanced */
+.category-btn:hover .cat-icon {
+    text-shadow: 0 0 15px rgba(212,168,67,0.6);
+    transition: text-shadow 0.3s;
+}
+
+/* Card slot gold corners */
+.card-slot {
+    position: relative;
+}
+.card-slot::before,
+.card-slot::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+}
+.card-slot.draw-animate::before,
+.card-slot.draw-animate::after {
+    opacity: 0.8;
+}
+.card-slot::before {
+    top: -2px;
+    left: -2px;
+    border-top: 1.5px solid #d4a843;
+    border-left: 1.5px solid #d4a843;
+    border-radius: 3px 0 0 0;
+}
+.card-slot::after {
+    bottom: -2px;
+    right: -2px;
+    border-bottom: 1.5px solid #d4a843;
+    border-right: 1.5px solid #d4a843;
+    border-radius: 0 0 3px 0;
+}
+
+/* Card front mystical pattern overlay */
+.card-front::before {
+    content: "★";
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    font-size: 0.55em;
+    color: rgba(42,26,78,0.1);
+    z-index: 1;
+    pointer-events: none;
+}
+.card-front::after {
+    content: "☆";
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    font-size: 0.55em;
+    color: rgba(42,26,78,0.1);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Enhanced title glow - overwrite existing */
+@keyframes glowPulse {
+    0%,100% { text-shadow: 0 0 20px rgba(212,168,67,0.3), 0 0 40px rgba(212,168,67,0.1); }
+    50% { text-shadow: 0 0 30px rgba(212,168,67,0.6), 0 0 60px rgba(212,168,67,0.2), 0 0 80px rgba(212,168,67,0.08); }
+}
+
+/* Reading section ornament */
+.reading-header h3::before {
+    content: "✧ ";
+    color: #d4a843;
+    opacity: 0.5;
+}
+.reading-header h3::after {
+    content: " ✧";
+    color: #d4a843;
+    opacity: 0.5;
+}
+
+/* Modal decorative top */
+.modal-content::before {
+    content: "✦ ✦ ✦";
+    display: block;
+    text-align: center;
+    font-size: 0.5em;
+    letter-spacing: 6px;
+    color: #d4a843;
+    opacity: 0.3;
+    margin-bottom: 6px;
+}
+
+/* Browse card divider ornaments */
+.browse-info::before,
+.browse-info::after {
+    content: "— ✦ —";
+    color: rgba(212,168,67,0.2);
+    font-size: 0.7em;
+    letter-spacing: 3px;
+}
+
+/* Payment button icon enhanced */
+.btn-pay::before {
+    content: "✧ ";
+    opacity: 0.7;
+}
+
+/* Reveal card name accent */
+.reveal-name::before {
+    content: "☽ ";
+    color: #d4a843;
+    font-size: 0.7em;
+    opacity: 0.5;
+}
+.reveal-name::after {
+    content: " ☾";
+    color: #d4a843;
+    font-size: 0.7em;
+    opacity: 0.5;
+}
+
+/* Reveal card subtle border glow */
+.reveal-card {
+    position: relative;
+}
+.reveal-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border: 1px solid rgba(212,168,67,0.15);
+    border-radius: 11px;
+    pointer-events: none;
+}
+
+/* Step-desc subtle decoration */
+.step-desc::before,
+.step-desc::after {
+    content: "·";
+    margin: 0 8px;
+    color: rgba(212,168,67,0.25);
+}
