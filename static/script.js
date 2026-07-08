@@ -245,23 +245,14 @@ async function drawCards() {
 // ===== Payment Modal =====
 
 function showPaymentModal() {
-
-    if (state.remaining > 0) { prepaidFlow(); }
-
-    else { showPricingModal(); }
-
+    prepaidFlow();
 }
 
 
 
 function prepaidFlow() {
-
-    var desc = document.getElementById("draw-desc");
-
-    var orig = desc.textContent;
-
-    desc.textContent = "✦ 牌灵正在解读牌意...";
-
+    useReading();
+    revealCards();
     state.readingStatus = 'loading';
 
     fetch("/api/reading", {
@@ -292,7 +283,7 @@ function prepaidFlow() {
 
     })
 
-    .catch(function() { state.readingStatus = 'error'; });
+    .catch(function() { state.readingStatus = 'error'; showReadingResult(); });
 
     
 
@@ -434,7 +425,7 @@ async function processPayment() {
 
     })
 
-    .catch(function() { state.readingStatus = 'error'; });
+    .catch(function() { state.readingStatus = 'error'; showReadingResult(); });
 
 
 
@@ -549,6 +540,7 @@ function populateRevealedCards() {
 // ===== AI Reading =====
 
 function showReadingResult() {
+    if (state.readingStatus === 'loading' && !state.readingResult) { return; }
 
     // Then show reading
 
@@ -662,7 +654,7 @@ function startCheckout(plan) {
 
 function verifyPayment(sid, plan) {
 
-    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;var desc=document.getElementById("draw-desc");if(desc)desc.textContent="✦ 牌灵正在解读牌意...";var db=document.getElementById("btn-draw");if(db){db.querySelector(".btn-text").textContent="✦ 牌灵解读 ✦";}setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}}).catch(function(){state.readingStatus="error";});(async function(){for(var i=0;i<120;i++){await new Promise(function(r){setTimeout(r,500)});if(state.readingStatus!=="loading")break;}showStep("step-draw");_showRevealButton();})();});}else{showStep("step-category");}}}).catch(function(){});
+    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;var desc=document.getElementById("draw-desc");if(desc)desc.textContent="✦ 牌灵正在解读牌意...";var db=document.getElementById("btn-draw");if(db){db.querySelector(".btn-text").textContent="✦ 牌灵解读 ✦";}setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}showReadingResult();}).catch(function(){state.readingStatus="error";});(async function(){for(var i=0;i<120;i++){await new Promise(function(r){setTimeout(r,500)});if(state.readingStatus!=="loading")break;}showStep("step-draw");_showRevealButton();})();});}else{showStep("step-category");}}}).catch(function(){});
 
 }
 
