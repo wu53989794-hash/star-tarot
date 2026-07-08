@@ -676,7 +676,7 @@ function updateRemainingBadge() {
 
 function useReading() {
 
-    if(!state.purchaseId&&!localStorage.getItem("tarot_purchase")){showPricingModal();return false;}if(state.remaining<=0&&localStorage.getItem("tarot_purchase")){fetch("/api/check-usage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:localStorage.getItem("tarot_purchase")})}).then(function(r){return r.json()}).then(function(d){state.remaining=d.remaining;if(d.remaining<=0){}});}if(!state.purchaseId){state.purchaseId=localStorage.getItem("tarot_purchase");}
+    if(!state.purchaseId&&!localStorage.getItem("tarot_purchase")){return false;}if(state.remaining<=0&&localStorage.getItem("tarot_purchase")){fetch("/api/check-usage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:localStorage.getItem("tarot_purchase")})}).then(function(r){return r.json()}).then(function(d){state.remaining=d.remaining;});}if(!state.purchaseId){state.purchaseId=localStorage.getItem("tarot_purchase");}
 
     fetch("/api/use-reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:state.purchaseId})})
 
