@@ -64,7 +64,7 @@ async function drawCards() {
 
     const btn = document.getElementById("btn-draw");
     btn.disabled = true;
-    btn.querySelector(".btn-text").textContent = "✦ 星灵正在洗牌 ✦";
+    btn.querySelector(".btn-text").textContent = "✦ 牌灵正在解读 ✦";
     state.isProcessing = true;
 
     try {
@@ -153,6 +153,7 @@ function prepaidFlow() {
             await new Promise(function(r) { setTimeout(r, 500); });
             if (state.readingStatus !== 'loading') break;
         }
+        useReading();
         revealCards();
     })();
 }
@@ -280,27 +281,6 @@ function populateRevealedCards() {
 }
 // ===== AI Reading =====
 function showReadingResult() {
-    // First populate revealed cards
-    var cards = state.drawnCards;
-    if (cards && cards.length > 0) {
-        var html = '';
-        cards.forEach(function(card, i) {
-            var orientation = card.orientation || '正位';
-            var isUpright = orientation === '正位';
-            var imgUrl = getCardImageUrl(card);
-            html += '<div class="reveal-card" id="reveal-' + i + '">' +
-                '<div class="reveal-card-inner">' +
-                '<div class="reveal-img-wrap"><img class="reveal-card-img' + (isUpright ? '' : ' reversed') + '" src="' + imgUrl + '" alt="' + card.name + '"></div>' +
-                '<div class="reveal-name">' + card.name + '</div>' +
-                '<div class="reveal-name-en">' + card.name_en + '</div>' +
-                '<div class="reveal-orientation ' + (isUpright ? 'orientation-upright' : 'orientation-reversed') + '">' + orientation + '</div>' +
-                '<div class="reveal-keywords">' + card.keywords + '</div>' +
-                '<div class="reveal-element">元素：' + card.element + '</div>' +
-                '</div></div>';
-        });
-        var container = document.getElementById('revealed-cards');
-        if (container) container.innerHTML = html;
-    }
     // Then show reading
     const readingContent = document.getElementById("reading-content");
     const readingCategory = document.getElementById("reading-category");
@@ -482,7 +462,6 @@ function toggleCardSelection(index) {
 function confirmCardSelection() {
     if (state.selectedCardIndices.length !== 3) return;
     if (state.remaining <= 0) { showPricingModal(); return; }
-    if (!useReading()) return;
     state.isProcessing = true;
     var ids = state.selectedCardIndices.map(function(i) { return state.allCards[i].id; });
     var btn = document.getElementById("btn-browse-draw");
