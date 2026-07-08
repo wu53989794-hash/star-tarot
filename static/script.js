@@ -118,8 +118,8 @@ async function drawCards() {
 
 // ===== Payment Modal =====
 function showPaymentModal() {
-    prefetchReading();
-    revealCards();
+    document.getElementById("payment-overlay").style.display = "flex";
+    document.body.style.overflow = "hidden";
 }
 
 function closePaymentModal() {
@@ -159,24 +159,39 @@ function prefetchReading() {
 }
 
 async function processPayment() {
-    const payBtn = document.getElementById("btn-pay");
-    const btnText = document.getElementById("pay-btn-text");
-    const btnLoading = document.getElementById("pay-btn-loading");
+    var btnPay = document.getElementById("btn-pay");
+    var btnText = document.getElementById("pay-btn-text");
+    var btnLoading = document.getElementById("pay-btn-loading");
 
-    payBtn.disabled = true;
+    btnPay.disabled = true;
     btnText.style.display = "none";
     btnLoading.style.display = "inline-block";
 
-    // Wait for reading if still loading (with timeout)
-    if (state.readingStatus === 'loading') {
-        for (var i = 0; i < 60; i++) {
-            await new Promise(function(r) { setTimeout(r, 500); });
-            if (state.readingStatus !== 'loading') break;
-        }
+    // Start fetching reading (no preview shown anywhere)
+    state.readingStatus = 'loading';
+    fetch("/api/reading", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            cards: state.drawnCards,
+            category: state.selectedCategory,
+            question: state.question
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { state.readingStatus = 'error'; }
+        else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+    })
+    .catch(function() { state.readingStatus = 'error'; });
+
+    // Wait for reading
+    for (var i = 0; i < 120; i++) {
+        await new Promise(function(r) { setTimeout(r, 500); });
+        if (state.readingStatus !== 'loading') break;
     }
 
-    // Quick payment simulation
-    await new Promise(function(r) { setTimeout(r, 500); });
+    await new Promise(function(r) { setTimeout(r, 300); });
 
     btnLoading.style.display = "none";
     btnText.style.display = "inline";
@@ -200,9 +215,7 @@ function revealCards() {
     setTimeout(() => {
         showStep("step-result");
         populateRevealedCards();
-        var rc = document.getElementById("reading-content");
-        rc.innerHTML = '<div class="reading-placeholder"><div class="reading-loading"><span class="dot-pulse"></span><span>星灵正在解读牌意...</span></div></div>';
-        checkReadingReady();
+        showReadingResult();
     }, 1800);
 }
 
@@ -260,31 +273,9 @@ function showReadingResult() {
         readingContent.innerHTML = html;
         document.getElementById("restart-section").style.display = "block";
     } else {
-        readingContent.innerHTML = '<div style="color:#e06060; text-align:center; padding:20px;">❌ 解读加载失败</div><div style="text-align:center;"><button onclick="retryReading()" class="btn-secondary" style="display:inline-block;padding:10px 24px;font-size:0.9em;">🔄 重试</button></div>';
+        readingContent.innerHTML = '<p style="color:#e06060; text-align:center; padding:20px;">❌ 解读加载失败，请重新开始</p>';
         document.getElementById("restart-section").style.display = "block";
     }
-}
-
-function retryReading() {
-    state.readingResult = null;
-    state.readingStatus = 'loading';
-    document.getElementById("restart-section").style.display = "none";
-    var rc = document.getElementById("reading-content");
-    rc.innerHTML = '<div class="reading-placeholder"><div class="reading-loading"><span class="dot-pulse"></span><span>星灵正在重新解读...</span></div></div>';
-    prefetchReading();
-    checkReadingReady();
-}
-
-function checkReadingReady() {
-    if (state.readingStatus === 'ready') {
-        showReadingResult();
-        return;
-    }
-    if (state.readingStatus === 'error') {
-        showReadingResult();
-        return;
-    }
-    setTimeout(checkReadingReady, 500);
 }
 
 // ===== Restart =====
