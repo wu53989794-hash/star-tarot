@@ -109,3 +109,40 @@ try:
 except ImportError:
     wsgi = None
 application = wsgi
+# WSGI wrapper for PythonAnywhere
+def _wsgi_app(environ, start_response):
+    """Convert ASGI FastAPI to WSGI for PythonAnywhere"""
+    import asyncio
+    body = environ.get('wsgi.input', b'').read()
+    headers = []
+    for k, v in environ.items():
+        if k == 'CONTENT_TYPE':
+            headers.append((b'content-type', v.encode()))
+        elif k == 'CONTENT_LENGTH':
+            headers.append((b'content-length', v.encode()))
+        elif k.startswith('HTTP_'):
+            headers.append((k[5:].replace('_','-').lower().encode(), v.encode()))
+    scope = {'type':'http','method':environ.get('REQUEST_METHOD','GET'),'path':environ.get('PATH_INFO','/'),'query_string':environ.get('QUERY_STRING','').encode(),'headers':headers,'http_version':'1.0'}
+    resp = {}
+    async def receive():
+        return {'type':'http.request','body':body,'more_body':False}
+    async def send(msg):
+        if msg['type']=='http.response.start':
+            resp['status']=msg['status']
+            resp['headers']=msg.get('headers',[])
+        elif msg['type']=='http.response.body':
+            resp.setdefault('body',b'')
+            resp['body']+=msg.get('body',b'')
+    loop=asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(app(scope,receive,send))
+        h=[(k.decode(),v.decode()) for k,v in resp.get('headers',[])]
+        start_response(f"{resp.get('status',500)} OK",h)
+        return [resp.get('body',b'')]
+    except:
+        start_response('500 Internal Server Error',[('Content-Type','text/plain')])
+        return [b'Sorry, the site encountered an error.']
+    finally:
+        loop.close()
+application = _wsgi_app
