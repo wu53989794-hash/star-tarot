@@ -280,6 +280,8 @@ function prepaidFlow() {
         if (data.error) { state.readingStatus = 'error'; }
 
         else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+        showStep("step-result");
+        populateRevealedCards();
         showReadingResult();
 
     })
@@ -423,6 +425,8 @@ async function processPayment() {
         if (data.error) { state.readingStatus = 'error'; }
 
         else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+        showStep("step-result");
+        populateRevealedCards();
         showReadingResult();
 
     })
@@ -480,16 +484,6 @@ function revealCards() {
         }, i * 200 + 200);
 
     });
-
-
-
-    setTimeout(() => {
-
-        showStep("step-result");
-
-        populateRevealedCards();
-
-        showReadingResult();
 
     }, 1800);
 
