@@ -259,6 +259,8 @@ function showPaymentModal() {
 
 
 function prepaidFlow() {
+    if (state.readingLock) return;
+    state.readingLock = true;
     useReading();
     revealCards();
     state.readingStatus = 'loading';
@@ -295,10 +297,11 @@ function prepaidFlow() {
         showStep("step-result");
         populateRevealedCards();
         showReadingResult();
+        state.readingLock = false;
 
     })
 
-    .catch(function() { state.readingStatus = 'error'; showReadingResult(); });
+    .catch(function() { state.readingStatus = 'error'; showReadingResult(); state.readingLock = false; });
 
     
 }
@@ -312,65 +315,7 @@ function closePaymentModal() {
 
 
 
-function prefetchReading() {
 
-    state.readingStatus = 'loading';
-
-    const preview = document.getElementById("pay-reading-preview");
-
-    preview.innerHTML = '<div class="pay-preview-loading"><span class="dot-pulse"></span><span>星灵正在为你解读牌意...</span></div>';
-
-
-
-    fetch("/api/reading", {
-
-        method: "POST",
-
-        headers: { "Content-Type": "application/json" },
-
-        body: JSON.stringify({
-
-            cards: state.drawnCards,
-
-            category: state.selectedCategory,
-
-            question: state.question
-
-        })
-
-    })
-
-    .then(res => res.json())
-
-    .then(data => {
-
-        if (data.error) {
-
-            state.readingStatus = 'error';
-
-            preview.innerHTML = '<div style="color:#e06060;font-size:0.8rem;text-align:center;">✦ 解读加载中...</div>';
-
-            return;
-
-        }
-
-        state.readingResult = data.reading;
-
-        state.readingStatus = 'ready';
-
-        var first = data.reading.substring(0, 200).replace(/#/g, '') + '…';
-
-        preview.innerHTML = '<div class="preview-label">\u2726 \u9884\u89c8</div><div class="preview-text">' + first + '</div>';
-
-    })
-
-    .catch(function() {
-
-        state.readingStatus = 'error';
-
-    });
-
-}
 
 
 
