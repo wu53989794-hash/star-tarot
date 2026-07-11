@@ -261,6 +261,7 @@ function showPaymentModal() {
 function prepaidFlow() {
     if (state.readingLock) return;
     state.readingLock = true;
+    state.isProcessing = true;
     useReading();
     revealCards();
     state.readingStatus = 'loading';
@@ -552,8 +553,9 @@ function startCheckout(plan) {
 function verifyPayment(sid, plan) {
     if (state.readingLock) return;
     state.readingLock = true;
+    state.isProcessing = true;
 
-    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;var desc=document.getElementById("draw-desc");if(desc)desc.textContent="✦ 牌灵正在解读牌意...";var db=document.getElementById("btn-draw");if(db){db.querySelector(".btn-text").textContent="✦ 牌灵解读 ✦";}setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}showStep("step-result");populateRevealedCards();showReadingResult();state.readingLock=false;}).catch(function(){state.readingStatus="error";state.readingLock=false;});});}else{showStep("step-category");}}}).catch(function(){});
+    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){sessionStorage.setItem("stripe_ok","1");localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;var desc=document.getElementById("draw-desc");if(desc)desc.textContent="✦ 牌灵正在解读牌意...";var db=document.getElementById("btn-draw");if(db){db.querySelector(".btn-text").textContent="✦ 牌灵解读 ✦";}setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}showStep("step-result");populateRevealedCards();showReadingResult();state.readingLock=false;}).catch(function(){state.readingStatus="error";state.readingLock=false;});});}else{showStep("step-category");}}}).catch(function(){});
 
 }
 
@@ -584,6 +586,8 @@ function useReading() {
 // Check Stripe redirect and existing purchase
 
 (function() {
+
+    if (sessionStorage.getItem("stripe_ok")) return;
 
     var p = new URLSearchParams(window.location.search);
 
