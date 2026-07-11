@@ -587,8 +587,6 @@ function useReading() {
 
 (function() {
 
-    if (sessionStorage.getItem("stripe_ok")) return;
-
     var p = new URLSearchParams(window.location.search);
 
     var sid = p.get("session_id");
