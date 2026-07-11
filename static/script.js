@@ -176,7 +176,7 @@ async function drawCards() {
 
                     var img = front.querySelector("img");
 
-                    if (img) img.src = getCardImageUrl(card);
+                    if (img) { img.src = getCardImageUrl(card); if (card.orientation === '逆位') img.classList.add('reversed'); }
 
                 }
 
@@ -863,7 +863,7 @@ function _startDraw() {
 
                     var img = front.querySelector("img");
 
-                    if (img) img.src = getCardImageUrl(card);
+                    if (img) { img.src = getCardImageUrl(card); if (card.orientation === '逆位') img.classList.add('reversed'); }
 
                 }
 
