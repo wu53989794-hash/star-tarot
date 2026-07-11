@@ -122,6 +122,8 @@ function selectCategory(category) {
 
 async function drawCards() {
 
+    if (state.isProcessing) return;
+
     if (!state.selectedCategory) {
 
         alert("请先选择一个占卜主题");
@@ -883,6 +885,7 @@ function _startDraw() {
 
     showStep("step-draw");
     document.getElementById("draw-desc").textContent = "\u2726 \u724c\u7075\u6b63\u5728\u89e3\u8bfb\u724c\u610f...";
+    var __b=document.getElementById("btn-draw");if(__b)__b.disabled=true;
     document.querySelectorAll(".card-slot").forEach(function(s){s.classList.remove("flipped","draw-animate");});
     fetch("/api/draw", {
 
