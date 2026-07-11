@@ -38,6 +38,12 @@ const CATEGORY_NAMES = {
 
     family: "家庭关系",
 
+    daily: "今日运程",
+
+    exam: "考试运势",
+
+    health: "健康状况",
+
     other: "其他"
 
  };
