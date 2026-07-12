@@ -83,6 +83,9 @@ class VerifyPaymentRequest(BaseModel):
 class CheckUsageRequest(BaseModel):
     purchase_id: str
 
+class CheckPaymentRequest(BaseModel):
+    intent_id: str
+
 class UseReadingRequest(BaseModel):
     purchase_id: str
 
@@ -154,6 +157,49 @@ async def create_checkout(req: CreateCheckoutRequest):
     except Exception as e:
         logger.error(f"Stripe checkout error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/create-alipay-qr")
+async def create_alipay_qr(req: CreateCheckoutRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=plan_info["amount_cny"],
+            currency="cny",
+            payment_method_types=["alipay"],
+            description=plan_info["name"],
+            metadata={"plan": req.plan},
+        )
+        # Confirm to get Alipay QR code
+        confirmed = stripe.PaymentIntent.confirm(
+            intent.id,
+            payment_method_data={"type": "alipay"},
+            return_url=base_url + "/?alipay_done=1",
+        )
+        qr_code = None
+        if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
+            qr_code = confirmed.next_action.alipay_handle_redirect.get("qr_code") or confirmed.next_action.alipay_handle_redirect.get("native_url")
+        return {"intent_id": confirmed.id, "qr_code": qr_code}
+    except Exception as e:
+        logger.error(f"Alipay QR error: {e}")
+
+@app.post("/api/check-alipay-status")
+async def check_alipay_status(req: CheckPaymentRequest):
+    try:
+        intent = stripe.PaymentIntent.retrieve(req.intent_id)
+        if intent.status == "succeeded":
+            plan = intent.metadata.get("plan", "")
+            if plan in PLANS:
+                pid = record(intent.id, plan)
+                return {"status": "succeeded", "purchase_id": pid, "remaining": PLANS[plan]["readings"]}
+            return {"status": "succeeded"}
+        elif intent.status == "processing":
+            return {"status": "processing"}
+        else:
+            return {"status": "pending"}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
 
 @app.get("/api/stripe-key")
 async def get_stripe_key():
