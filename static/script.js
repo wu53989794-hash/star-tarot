@@ -547,7 +547,7 @@ function startCheckout(plan) {
 
     var sc = document.getElementById("stripe-checkout");
 
-    sc.innerHTML = "<div style="text-align:center;padding:30px;color:#a090b0;"><div style="font-size:2em;margin-bottom:10px;">⚫</div>正在加载支付...</div>";
+    sc.innerHTML = '<div style="text-align:center;padding:30px;color:#a090b0;"><div style="font-size:2em;margin-bottom:10px;">⚫</div>正在加载支付...</div>';
 
     sc.style.display = "block";
 
@@ -573,7 +573,7 @@ function startCheckout(plan) {
 
         }).catch(function(){alert("支付服务异常");});
 
-    }).catch(function(){alert("无法加载支付服务");});
+    }).catch(function(){if(typeof Stripe==="undefined"){fetch("/api/create-checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.location.href=d.url;});}else{alert("支付服务加载失败");}});
 
 }
 
