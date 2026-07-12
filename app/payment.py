@@ -42,7 +42,17 @@ def remaining(purchase_id):
     p = d.get(purchase_id)
     return p["remaining"] if p else 0
 
+def _find_existing(session_id):
+    d = _load()
+    for pid, info in d.items():
+        if info.get("session_id") == session_id:
+            return pid
+    return None
+
 def record(session_id, plan):
+    existing = _find_existing(session_id)
+    if existing:
+        return existing
     d = _load()
     pid = uuid.uuid4().hex[:12]
     info = PLANS[plan]
