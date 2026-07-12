@@ -472,6 +472,37 @@ function showReadingResult() {
 
 // ===== Restart =====
 
+function pollPaymentStatus(intentId, plan) {
+    fetch("/api/check-alipay-status", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({intent_id:intentId})})
+    .then(function(r){return r.json()}).then(function(d){
+        if(d.status === "succeeded"){
+            document.getElementById("payment-status").textContent = "支付成功！正在处理...";
+            localStorage.setItem("tarot_purchase", d.purchase_id);
+            state.purchaseId = d.purchase_id;
+            state.remaining = d.remaining;
+            updateRemainingBadge();
+            closePricingModal();
+            var cat = localStorage.getItem("tarot_cat");
+            var q = localStorage.getItem("tarot_q");
+            if(cat){
+                state.selectedCategory = cat;
+                state.question = q || "";
+                localStorage.removeItem("tarot_cat");
+                localStorage.removeItem("tarot_q");
+                _startDraw();
+            } else {
+                showStep("step-category");
+            }
+        } else if(d.status === "processing"){
+            setTimeout(function(){pollPaymentStatus(intentId, plan);}, 3000);
+        } else {
+            setTimeout(function(){pollPaymentStatus(intentId, plan);}, 3000);
+        }
+    }).catch(function(){
+        setTimeout(function(){pollPaymentStatus(intentId, plan);}, 3000);
+    });
+}
+
 function restartReading() {
 
     state.selectedCategory = null;
