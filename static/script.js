@@ -503,6 +503,30 @@ function pollPaymentStatus(intentId, plan) {
     });
 }
 
+function verifyPi(piId, plan) {
+    fetch("/api/verify-pi", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({intent_id:piId})})
+    .then(function(r){return r.json()}).then(function(d){
+        if(d.success){
+            localStorage.setItem("tarot_purchase", d.purchase_id);
+            state.purchaseId = d.purchase_id;
+            state.remaining = d.remaining;
+            updateRemainingBadge();
+            closePricingModal();
+            var cat = localStorage.getItem("tarot_cat");
+            var q = localStorage.getItem("tarot_q");
+            if(cat){
+                state.selectedCategory = cat;
+                state.question = q || "";
+                localStorage.removeItem("tarot_cat");
+                localStorage.removeItem("tarot_q");
+                _startDraw();
+            } else {
+                showStep("step-category");
+            }
+        }
+    });
+}
+
 function restartReading() {
 
     state.selectedCategory = null;
@@ -578,68 +602,81 @@ function startCheckout(plan) {
 
     var sc = document.getElementById("stripe-checkout");
 
-    sc.innerHTML = (
-        '<div style="text-align:center;padding:30px;color:#a090b0;">' +
-        '生成支付链接...</div>'
-    );
+    sc.innerHTML = '<div style="text-align:center;padding:30px;color:#a090b0;">生成支付链接...</div>';
 
     sc.style.display = "block";
 
-    var isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    var ua = navigator.userAgent;
+    var isMobile = window.innerWidth < 1024 || typeof window.ontouchstart !== "undefined" || ua.indexOf("Mobi") >= 0 || ua.indexOf("Android") >= 0 || ua.indexOf("iPhone") >= 0 || ua.indexOf("iPad") >= 0 || ua.indexOf("UCBrowser") >= 0 || ua.indexOf("HarmonyOS") >= 0;
 
-    fetch("/api/create-alipay-qr", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+    if(isMobile){
 
-    .then(function(r){return r.json()}).then(function(d){
+        fetch("/api/create-mobile-payment", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
 
-        if(isMobile && d.session_url){
+        .then(function(r){return r.json()}).then(function(d){
 
-            window.location.href = d.session_url;
+            if(d.native_url){
 
-        } else if(d.qr_code){
+                window.location.href = d.native_url;
 
-            sc.innerHTML = (
-                '<div style="text-align:center;padding:10px;">' +
-                '<div style="font-size:1.1em;color:#d4a843;margin-bottom:8px;">' +
-                '请用支付宝扫码付款</div>' +
-                '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">' +
-                '付款后自动增加次数</div>' +
-                '<img src="' + d.qr_code + '" style="max-width:250px;border-radius:12px;border:2px solid rgba(212,168,67,0.3);">' +
-                '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">' +
-                '等待付款...</div></div>'
-            );
+            } else if(d.session_url){
 
-            pollPaymentStatus(d.session_id, plan);
+                window.location.href = d.session_url;
 
-        } else if(d.session_url){
+            } else {
 
-            sc.innerHTML = (
-                '<div style="text-align:center;padding:20px;">' +
-                '<div style="font-size:1.1em;color:#d4a843;margin-bottom:10px;">' +
-                '请用手机打开链接支付</div>' +
-                '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">' +
-                '付款后自动增加次数</div>' +
-                '<a href="' + d.session_url + '" target="_blank" ' +
-                'style="display:inline-block;padding:12px 30px;' +
-                'background:#d4a843;color:#1a0a2e;border-radius:25px;' +
-                'text-decoration:none;font-weight:bold;">' +
-                '点击支付</a>' +
-                '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">' +
-                '等待付款...</div></div>'
-            );
+                sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">支付创建失败</div>';
 
-            pollPaymentStatus(d.session_id, plan);
+            }
 
-        } else {
+        }).catch(function(){
 
-            sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">' +
-                '创建支付失败</div>';
+            sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">支付服务异常</div>';
 
-        }
+        });
 
-    }).catch(function(){
-        sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">' +
-            '支付服务异常</div>';
-    });
+    } else {
+
+        fetch("/api/create-alipay-qr", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+
+        .then(function(r){return r.json()}).then(function(d){
+
+            if(d.qr_code){
+
+                sc.innerHTML = (
+                    '<div style="text-align:center;padding:10px;">' +
+                    '<div style="font-size:1.1em;color:#d4a843;margin-bottom:8px;">请用支付宝扫码付款</div>' +
+                    '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">付款后自动增加次数</div>' +
+                    '<img src="' + d.qr_code + '" style="max-width:250px;border-radius:12px;border:2px solid rgba(212,168,67,0.3);">' +
+                    '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">等待付款...</div></div>'
+                );
+
+                pollPaymentStatus(d.session_id, plan);
+
+            } else if(d.session_url){
+
+                sc.innerHTML = (
+                    '<div style="text-align:center;padding:20px;">' +
+                    '<div style="font-size:1.1em;color:#d4a843;margin-bottom:10px;">请用手机打开链接支付</div>' +
+                    '<a href="' + d.session_url + '" target="_blank" style="display:inline-block;padding:12px 30px;background:#d4a843;color:#1a0a2e;border-radius:25px;text-decoration:none;font-weight:bold;">点击支付</a>' +
+                    '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">等待付款...</div></div>'
+                );
+
+                pollPaymentStatus(d.session_id, plan);
+
+            } else {
+
+                sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">创建支付失败</div>';
+
+            }
+
+        }).catch(function(){
+
+            sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">支付服务异常</div>';
+
+        });
+
+    }
 
 }
 
@@ -684,6 +721,9 @@ function useReading() {
     var sid = p.get("session_id");
 
     var plan = p.get("plan");
+    var pi = p.get("pi");
+
+    if (pi && plan) { showStep("step-draw"); document.getElementById("draw-desc").textContent = "正在验证支付..."; verifyPi(pi, plan); window.history.replaceState({}, "", "/"); }
 
     if (sid && plan) { showStep("step-draw"); document.getElementById("draw-desc").textContent = "\u2726 \u652f\u4ed8\u9a8c\u8bc1\u4e2d..."; verifyPayment(sid, plan); window.history.replaceState({}, "", "/"); }
     var pid = localStorage.getItem("tarot_purchase");
