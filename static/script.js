@@ -580,17 +580,22 @@ function startCheckout(plan) {
 
     sc.innerHTML = (
         '<div style="text-align:center;padding:30px;color:#a090b0;">' +
-        '<div style="font-size:2em;margin-bottom:10px;">⏳</div>' +
-        '生成支付码...</div>'
+        '生成支付链接...</div>'
     );
 
     sc.style.display = "block";
+
+    var isMobile = window.innerWidth < 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
     fetch("/api/create-alipay-qr", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
 
     .then(function(r){return r.json()}).then(function(d){
 
-        if(d.qr_code){
+        if(isMobile && d.session_url){
+
+            window.location.href = d.session_url;
+
+        } else if(d.qr_code){
 
             sc.innerHTML = (
                 '<div style="text-align:center;padding:10px;">' +
@@ -612,7 +617,7 @@ function startCheckout(plan) {
                 '<div style="font-size:1.1em;color:#d4a843;margin-bottom:10px;">' +
                 '请用手机打开链接支付</div>' +
                 '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">' +
-                '支付后自动增加次数</div>' +
+                '付款后自动增加次数</div>' +
                 '<a href="' + d.session_url + '" target="_blank" ' +
                 'style="display:inline-block;padding:12px 30px;' +
                 'background:#d4a843;color:#1a0a2e;border-radius:25px;' +
