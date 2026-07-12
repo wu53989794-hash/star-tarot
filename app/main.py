@@ -187,15 +187,14 @@ async def create_alipay_qr(req: CreateCheckoutRequest):
 @app.post("/api/check-alipay-status")
 async def check_alipay_status(req: CheckPaymentRequest):
     try:
-        intent = stripe.PaymentIntent.retrieve(req.intent_id)
-        if intent.status == "succeeded":
-            plan = intent.metadata.get("plan", "")
-            if plan in PLANS:
-                pid = record(intent.id, plan)
-                return {"status": "succeeded", "purchase_id": pid, "remaining": PLANS[plan]["readings"]}
-            return {"status": "succeeded"}
-        elif intent.status == "processing":
-            return {"status": "processing"}
+        session = stripe.checkout.Session.retrieve(req.intent_id)
+        if session.payment_status == "paid":
+            plan = session.metadata.get("plan", "") if session.metadata else ""
+            # Use the session_id as the record key
+            pid = record(req.intent_id, plan)
+            return {"status": "succeeded", "purchase_id": pid, "remaining": PLANS.get(plan, {}).get("readings", 0)}
+        elif session.status == "expired" or session.status == "canceled":
+            return {"status": "failed"}
         else:
             return {"status": "pending"}
     except Exception as e:
