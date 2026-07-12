@@ -531,8 +531,9 @@ function showPricingModal() {
 function closePricingModal() {
 
     document.getElementById("pricing-overlay").style.display = "none";
-
     document.body.style.overflow = "";
+    var po=document.getElementById("pricing-options");if(po)po.style.display="flex";
+    var sc=document.getElementById("stripe-checkout");if(sc){sc.style.display="none";sc.innerHTML="";}
 
 }
 
@@ -542,11 +543,37 @@ function startCheckout(plan) {
 
     localStorage.setItem("tarot_q", state.question || "");
 
-    fetch("/api/create-checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+    document.getElementById("pricing-options").style.display = "none";
 
-    .then(function(r){return r.json()}).then(function(d){if(d.url)window.location.href=d.url;else alert("创建支付失败");})
+    var sc = document.getElementById("stripe-checkout");
 
-    .catch(function(){alert("支付服务异常");});
+    sc.innerHTML = "<div style="text-align:center;padding:30px;color:#a090b0;"><div style="font-size:2em;margin-bottom:10px;">⚫</div>正在加载支付...</div>";
+
+    sc.style.display = "block";
+
+    fetch("/api/stripe-key").then(function(r){return r.json()}).then(function(k){
+
+        var stripe = Stripe(k.publishable_key);
+
+        fetch("/api/create-embedded-checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+
+        .then(function(r){return r.json()}).then(function(d){
+
+            if(d.client_secret){
+
+                sc.innerHTML = "";
+
+                stripe.initEmbeddedCheckout({clientSecret: d.client_secret}).mount("#stripe-checkout");
+
+            } else {
+
+                alert("创建支付失败: " + (d.error || ""));
+
+            }
+
+        }).catch(function(){alert("支付服务异常");});
+
+    }).catch(function(){alert("无法加载支付服务");});
 
 }
 
