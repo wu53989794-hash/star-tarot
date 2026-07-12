@@ -350,7 +350,7 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
         )
         native_url = None
         if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
-            native_url = confirmed.next_action.alipay_handle_redirect.get("native_url")
+            native_url = confirmed.next_action.alipay_handle_redirect.native_url
         return {"intent_id": confirmed.id, "native_url": native_url}
     except Exception as e:
         logger.error(f"Mobile payment error: {e}")
