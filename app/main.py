@@ -1,5 +1,6 @@
 ﻿import random
 import json
+import os
 import logging
 from pathlib import Path
 from fastapi import FastAPI, Request
@@ -10,11 +11,23 @@ from pydantic import BaseModel
 from app.cards import ALL_CARDS
 from app.deepseek import get_reading, get_reading_stream
 
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class CharsetMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        ct = response.headers.get("content-type", "")
+        if ct.startswith("text/javascript") or ct.startswith("application/javascript"):
+            if "; charset=" not in ct:
+                response.headers["content-type"] = ct + "; charset=utf-8"
+        return response
+
 logging.basicConfig(level=logging.INFO)
 logging.getLogger().addHandler(logging.FileHandler(Path(__file__).parent.parent / "server.log"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="星语塔罗", description="塔罗占卜 AI 深度解读")
+app.add_middleware(CharsetMiddleware)
 
 # 请求模型
 class DrawRequest(BaseModel):
@@ -141,6 +154,46 @@ async def create_checkout(req: CreateCheckoutRequest):
     except Exception as e:
         logger.error(f"Stripe checkout error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/stripe-key")
+async def get_stripe_key():
+    pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    if not pk:
+        _env_path = Path(__file__).parent.parent / ".env"
+        if _env_path.exists():
+            for _line in _env_path.read_text(encoding="utf-8").splitlines():
+                _line = _line.strip()
+                if _line.startswith("STRIPE_PUBLISHABLE_KEY="):
+                    pk = _line.split("=", 1)[1].strip().strip(chr(34)).strip(chr(39))
+                    break
+    return {"publishable_key": pk}
+
+@app.post("/api/create-embedded-checkout")
+async def create_embedded_checkout(req: CreateCheckoutRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    base_url = req.base_url or "http://127.0.0.1:5678"
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card", "alipay"],
+            line_items=[{
+                "price_data": {
+                    "currency": "cny",
+                    "product_data": {"name": plan_info["name"]},
+                    "unit_amount": plan_info["amount_cny"],
+                },
+                "quantity": 1,
+            }],
+            ui_mode="embedded",
+            return_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan,
+        )
+        return {"client_secret": session.client_secret, "session_id": session.id}
+    except Exception as e:
+        logger.error(f"Stripe embedded checkout error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
 
 @app.post("/api/verify-payment")
 async def verify_payment(req: VerifyPaymentRequest):
