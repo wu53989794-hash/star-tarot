@@ -591,9 +591,18 @@ function startCheckout(plan) {
 
     .then(function(r){return r.json()}).then(function(d){
 
-        if(isMobile && d.session_url){
+        if(isMobile){
 
-            window.location.href = d.session_url;
+            fetch("/api/create-mobile-payment", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+            .then(function(r){return r.json()}).then(function(d2){
+                if(d2.native_url){
+                    window.location.href = d2.native_url;
+                } else {
+                    sc.innerHTML = "<div style='text-align:center;padding:30px;color:#e06060;'>支付服务创建失败</div>";
+                }
+            }).catch(function(){
+                sc.innerHTML = "<div style='text-align:center;padding:30px;color:#e06060;'>支付服务异常</div>";
+            });
 
         } else if(d.qr_code){
 
@@ -684,8 +693,19 @@ function useReading() {
     var sid = p.get("session_id");
 
     var plan = p.get("plan");
+    var pi = p.get("pi");
 
-    if (sid && plan) { showStep("step-draw"); document.getElementById("draw-desc").textContent = "\u2726 \u652f\u4ed8\u9a8c\u8bc1\u4e2d..."; verifyPayment(sid, plan); window.history.replaceState({}, "", "/"); }
+    if (sid && plan) {
+        document.getElementById("draw-desc").textContent = "正在验证支付...";
+        verifyPayment(sid, plan);
+        window.history.replaceState({}, "", "/");
+    }
+
+    if (pi && plan) {
+        document.getElementById("draw-desc").textContent = "正在验证支付...";
+        verifyPayment(pi, plan);
+        window.history.replaceState({}, "", "/");
+    } showStep("step-draw"); document.getElementById("draw-desc").textContent = "\u2726 \u652f\u4ed8\u9a8c\u8bc1\u4e2d..."; verifyPayment(sid, plan); window.history.replaceState({}, "", "/"); }
     var pid = localStorage.getItem("tarot_purchase");
 
     if (pid) {
