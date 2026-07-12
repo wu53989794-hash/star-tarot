@@ -578,33 +578,63 @@ function startCheckout(plan) {
 
     var sc = document.getElementById("stripe-checkout");
 
-    sc.innerHTML = '<div style="text-align:center;padding:30px;color:#a090b0;"><div style="font-size:2em;margin-bottom:10px;">⚫</div>正在加载支付...</div>';
+    sc.innerHTML = (
+        '<div style="text-align:center;padding:30px;color:#a090b0;">' +
+        '<div style="font-size:2em;margin-bottom:10px;">⏳</div>' +
+        '生成支付码...</div>'
+    );
 
     sc.style.display = "block";
 
-    fetch("/api/stripe-key").then(function(r){return r.json()}).then(function(k){
+    fetch("/api/create-alipay-qr", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
 
-        var stripe = Stripe(k.publishable_key);
+    .then(function(r){return r.json()}).then(function(d){
 
-        fetch("/api/create-embedded-checkout", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+        if(d.qr_code){
 
-        .then(function(r){return r.json()}).then(function(d){
+            sc.innerHTML = (
+                '<div style="text-align:center;padding:10px;">' +
+                '<div style="font-size:1.1em;color:#d4a843;margin-bottom:8px;">' +
+                '请用支付宝扫码付款</div>' +
+                '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">' +
+                '付款后自动增加次数</div>' +
+                '<img src="' + d.qr_code + '" style="max-width:250px;border-radius:12px;border:2px solid rgba(212,168,67,0.3);">' +
+                '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">' +
+                '等待付款...</div></div>'
+            );
 
-            if(d.client_secret){
+            pollPaymentStatus(d.session_id, plan);
 
-                sc.innerHTML = "";
+        } else if(d.session_url){
 
-                stripe.initEmbeddedCheckout({clientSecret: d.client_secret}).mount("#stripe-checkout");
+            sc.innerHTML = (
+                '<div style="text-align:center;padding:20px;">' +
+                '<div style="font-size:1.1em;color:#d4a843;margin-bottom:10px;">' +
+                '请用手机打开链接支付</div>' +
+                '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">' +
+                '支付后自动增加次数</div>' +
+                '<a href="' + d.session_url + '" target="_blank" ' +
+                'style="display:inline-block;padding:12px 30px;' +
+                'background:#d4a843;color:#1a0a2e;border-radius:25px;' +
+                'text-decoration:none;font-weight:bold;">' +
+                '点击支付</a>' +
+                '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">' +
+                '等待付款...</div></div>'
+            );
 
-            } else {
+            pollPaymentStatus(d.session_id, plan);
 
-                alert("创建支付失败: " + (d.error || ""));
+        } else {
 
-            }
+            sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">' +
+                '创建支付失败</div>';
 
-        }).catch(function(){alert("支付服务异常");});
+        }
 
-    }).catch(function(){if(typeof Stripe==="undefined"){fetch("/api/create-checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})}).then(function(r){return r.json()}).then(function(d){if(d.url)window.location.href=d.url;});}else{alert("支付服务加载失败");}});
+    }).catch(function(){
+        sc.innerHTML = '<div style="text-align:center;padding:30px;color:#e06060;">' +
+            '支付服务异常</div>';
+    });
 
 }
 
