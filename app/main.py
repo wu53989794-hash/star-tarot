@@ -163,26 +163,41 @@ async def create_alipay_qr(req: CreateCheckoutRequest):
     plan_info = PLANS.get(req.plan)
     if not plan_info:
         return JSONResponse({"error": "invalid plan"}, status_code=400)
+    base_url = req.base_url or "http://127.0.0.1:5678"
     try:
-        intent = stripe.PaymentIntent.create(
-            amount=plan_info["amount_cny"],
-            currency="cny",
+        session = stripe.checkout.Session.create(
+            mode="payment",
             payment_method_types=["alipay"],
-            description=plan_info["name"],
+            line_items=[{
+                "price_data": {
+                    "currency": "cny",
+                    "product_data": {"name": plan_info["name"]},
+                    "unit_amount": plan_info["amount_cny"],
+                },
+                "quantity": 1,
+            }],
             metadata={"plan": req.plan},
+            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan,
+            cancel_url=base_url + "/",
         )
-        # Confirm to get Alipay QR code
-        confirmed = stripe.PaymentIntent.confirm(
-            intent.id,
-            payment_method_data={"type": "alipay"},
-            return_url=base_url + "/?alipay_done=1",
-        )
-        qr_code = None
-        if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
-            qr_code = confirmed.next_action.alipay_handle_redirect.get("qr_code") or confirmed.next_action.alipay_handle_redirect.get("native_url")
-        return {"intent_id": confirmed.id, "qr_code": qr_code}
+        qr_data = None
+        try:
+            import qrcode
+            from io import BytesIO
+            import base64 as b64
+            qr = qrcode.QRCode(box_size=8, border=2)
+            qr.add_data(session.url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            qr_data = "data:image/png;base64," + b64.b64encode(buf.getvalue()).decode()
+        except Exception:
+            qr_data = None
+        return {"session_id": session.id, "session_url": session.url, "qr_code": qr_data}
     except Exception as e:
         logger.error(f"Alipay QR error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/check-alipay-status")
 async def check_alipay_status(req: CheckPaymentRequest):
