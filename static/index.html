@@ -169,7 +169,7 @@
         <div style="font-size:2.5em;margin-bottom:10px;">🔮</div>
         <h2 style="color:#d4a843;margin-bottom:6px;font-size:1.2em;">选择占卜套餐</h2>
         <p style="color:#a090b0;font-size:0.85em;margin-bottom:20px;">购买后不限时间，按次扣减</p>
-        <div style="display:flex;gap:12px;margin-bottom:20px;">
+        <div id="pricing-options" style="display:flex;gap:12px;margin-bottom:20px;">
             <div onclick="startCheckout('2_readings')" style="flex:1;background:rgba(212,168,67,0.08);border:1.5px solid #d4a843;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s;">
                 <div style="font-size:0.85em;color:#a090b0;margin-bottom:8px;">两次占卜</div>
                 <div style="font-size:1.8em;color:#d4a843;font-weight:bold;">&yen;14.99</div>
@@ -185,6 +185,7 @@
             </div>
         </div>
         <p style="font-size:0.7em;color:#6a5a7a;">支付由 Stripe 安全处理</p>
+        <div id="stripe-checkout" style="display:none;"></div>
     </div>
 </div>
 
@@ -272,6 +273,7 @@
         </section>
     </div>
 
+                <script src="https://js.stripe.com/v3/"></script>
                 <script src="/static/script.js?v=10" charset="UTF-8"></script>
 </body>
 </html>
