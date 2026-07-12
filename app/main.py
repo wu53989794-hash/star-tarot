@@ -278,33 +278,6 @@ async def use_reading(req: UseReadingRequest):
 
 
 
-@app.post("/api/create-mobile-payment")
-async def create_mobile_payment(req: CreateCheckoutRequest):
-    plan_info = PLANS.get(req.plan)
-    if not plan_info:
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
-    base_url = req.base_url or "http://127.0.0.1:5678"
-    try:
-        intent = stripe.PaymentIntent.create(
-            amount=plan_info["amount_cny"],
-            currency="cny",
-            payment_method_types=["alipay"],
-            description=plan_info["name"],
-            metadata={"plan": req.plan},
-        )
-        confirmed = stripe.PaymentIntent.confirm(
-            intent.id,
-            payment_method_data={"type": "alipay"},
-            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan,
-        )
-        native_url = None
-        if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
-            native_url = confirmed.next_action.alipay_handle_redirect.get("native_url")
-        return {"intent_id": confirmed.id, "native_url": native_url}
-    except Exception as e:
-        logger.error(f"Mobile payment error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
 # WSGI wrapper for PythonAnywhere
 try:
     from a2wsgi import ASGIMiddleware
@@ -353,6 +326,9 @@ def _wsgi_app(environ, start_response):
         loop.close()
 application = _wsgi_app
 
+@app.post("/api/verify-pi")
+
+
 @app.post("/api/create-mobile-payment")
 async def create_mobile_payment(req: CreateCheckoutRequest):
     plan_info = PLANS.get(req.plan)
@@ -366,28 +342,18 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
             payment_method_types=["alipay"],
             description=plan_info["name"],
             metadata={"plan": req.plan},
-        )
-        from urllib.parse import urlencode
-        confirm_params = {
-            "payment_method_data[type]": "alipay",
-            "return_url": base_url + "/?pi=" + intent.id + "&plan=" + req.plan,
-        }
-        confirmed = stripe.PaymentIntent.confirm(
-            intent.id,
+            confirm=True,
             payment_method_data={"type": "alipay"},
-            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan,
+            return_url=base_url + "/?pi={PAYMENT_INTENT_ID}&plan=" + req.plan,
         )
         native_url = None
-        qr_code = None
-        if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
-            native_url = confirmed.next_action.alipay_handle_redirect.get("native_url")
-            qr_code = confirmed.next_action.alipay_handle_redirect.get("qr_code")
-        return {"intent_id": confirmed.id, "native_url": native_url, "qr_code": qr_code}
+        if intent.next_action and intent.next_action.alipay_handle_redirect:
+            native_url = intent.next_action.alipay_handle_redirect.get("native_url")
+        return {"intent_id": intent.id, "native_url": native_url}
     except Exception as e:
         logger.error(f"Mobile payment error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
-@app.post("/api/verify-pi")
 async def verify_pi(req: CheckPaymentRequest):
     try:
         intent = stripe.PaymentIntent.retrieve(req.intent_id)
