@@ -1176,7 +1176,6 @@ function startCheckout(plan) {
 
     sc.style.display = "block";
 
-    // Check mobile FIRST - before any API call
     var ua = navigator.userAgent;
     var isMobile = (window.innerWidth < 1024) || (typeof ontouchstart !== "undefined") || (ua.indexOf("Mobi") >= 0) || (ua.indexOf("Android") >= 0) || (ua.indexOf("iPhone") >= 0) || (ua.indexOf("iPad") >= 0) || (ua.indexOf("UCBrowser") >= 0) || (ua.indexOf("HarmonyOS") >= 0);
 
@@ -1211,11 +1210,11 @@ function startCheckout(plan) {
             if(d.qr_code){
 
                 sc.innerHTML = (
-                    "<div style="text-align:center;padding:10px;">" +
-                    "<div style="font-size:1.1em;color:#d4a843;margin-bottom:8px;">请用支付宝扫码付款</div>" +
-                    "<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">付款后自动增加次数</div>" +
-                    "<img src="" + d.qr_code + "" style="max-width:250px;border-radius:12px;border:2px solid rgba(212,168,67,0.3);">" +
-                    "<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">等待付款...</div></div>"
+                    '<div style="text-align:center;padding:10px;">' +
+                    '<div style="font-size:1.1em;color:#d4a843;margin-bottom:8px;">请用支付宝扫码付款</div>' +
+                    '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">付款后自动增加次数</div>' +
+                    '<img src="' + d.qr_code + '" style="max-width:250px;border-radius:12px;border:2px solid rgba(212,168,67,0.3);">' +
+                    '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">等待付款...</div></div>'
                 );
 
                 pollPaymentStatus(d.session_id, plan);
@@ -1223,12 +1222,12 @@ function startCheckout(plan) {
             } else if(d.session_url){
 
                 sc.innerHTML = (
-                    "<div style="text-align:center;padding:20px;">" +
-                    "<div style="font-size:1.1em;color:#d4a843;margin-bottom:10px;">请用手机打开链接支付</div>" +
-                    "<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">付款后自动增加次数</div>" +
-                    "<a href="" + d.session_url + "" target="_blank" " +
-                    "style="display:inline-block;padding:12px 30px;background:#d4a843;color:#1a0a2e;border-radius:25px;text-decoration:none;font-weight:bold;">点击支付</a>" +
-                    "<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">等待付款...</div></div>"
+                    '<div style="text-align:center;padding:20px;">' +
+                    '<div style="font-size:1.1em;color:#d4a843;margin-bottom:10px;">请用手机打开链接支付</div>' +
+                    '<div style="font-size:0.8em;color:#a090b0;margin-bottom:15px;">付款后自动增加次数</div>' +
+                    '<a href="' + d.session_url + '" target="_blank" ' +
+                    'style="display:inline-block;padding:12px 30px;background:#d4a843;color:#1a0a2e;border-radius:25px;text-decoration:none;font-weight:bold;">点击支付</a>' +
+                    '<div style="margin-top:15px;font-size:0.8em;color:#7a6a8a;" id="payment-status">等待付款...</div></div>'
                 );
 
                 pollPaymentStatus(d.session_id, plan);
