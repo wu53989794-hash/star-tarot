@@ -342,14 +342,16 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
             payment_method_types=["alipay"],
             description=plan_info["name"],
             metadata={"plan": req.plan},
-            confirm=True,
+            )
+        confirmed = stripe.PaymentIntent.confirm(
+            intent.id,
             payment_method_data={"type": "alipay"},
-            return_url=base_url + "/?pi={PAYMENT_INTENT_ID}&plan=" + req.plan,
+            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan,
         )
         native_url = None
-        if intent.next_action and intent.next_action.alipay_handle_redirect:
-            native_url = intent.next_action.alipay_handle_redirect.get("native_url")
-        return {"intent_id": intent.id, "native_url": native_url}
+        if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
+            native_url = confirmed.next_action.alipay_handle_redirect.get("native_url")
+        return {"intent_id": confirmed.id, "native_url": native_url}
     except Exception as e:
         logger.error(f"Mobile payment error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
