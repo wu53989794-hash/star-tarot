@@ -642,7 +642,7 @@ function startCheckout(plan) {
 
     if(isMobile){
 
-        fetch("/api/create-mobile-payment", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+        fetch("/api/create-mobile-payment", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin,category:(state.selectedCategory||""),question:(state.question||"")})})
 
         .then(function(r){return r.json()}).then(function(d){
 
@@ -672,7 +672,7 @@ function startCheckout(plan) {
 
     } else {
 
-        fetch("/api/create-alipay-qr", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin})})
+        fetch("/api/create-alipay-qr", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan,base_url:window.location.origin,category:(state.selectedCategory||""),question:(state.question||"")})})
 
         .then(function(r){return r.json()}).then(function(d){
 
@@ -752,11 +752,19 @@ function useReading() {
 (function() {
 
     var p = new URLSearchParams(window.location.search);
+    var catFromUrl = p.get("cat");
+    var qFromUrl = p.get("q");
 
     var sid = p.get("session_id");
 
     var plan = p.get("plan");
     var pi = p.get("pi");
+    if (catFromUrl && !localStorage.getItem("tarot_cat")) {
+        localStorage.setItem("tarot_cat", decodeURIComponent(catFromUrl));
+    }
+    if (qFromUrl && !localStorage.getItem("tarot_q")) {
+        localStorage.setItem("tarot_q", decodeURIComponent(qFromUrl));
+    }
 
     if (pi && plan) { if(localStorage.getItem("tarot_cat")){ showStep("step-draw"); document.getElementById("draw-desc").textContent = "正在验证支付..."; startPiPolling(pi, plan); window.history.replaceState({}, "", "/"); } else { document.getElementById("pricing-options").style.display = "none"; document.getElementById("stripe-checkout").innerHTML = "<div style=\"text-align:center;padding:30px;color:#a090b0;\">检测到付款成功，请返回原页面...</div>"; document.getElementById("stripe-checkout").style.display = "block"; startPiPolling(pi, plan); window.history.replaceState({}, "", "/"); } }
 

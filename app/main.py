@@ -75,6 +75,8 @@ async def draw_cards(req: DrawRequest):
 class CreateCheckoutRequest(BaseModel):
     plan: str
     base_url: str = ""
+    category: str = ""
+    question: str = ""
 
 class VerifyPaymentRequest(BaseModel):
     session_id: str
@@ -346,7 +348,7 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
         confirmed = stripe.PaymentIntent.confirm(
             intent.id,
             payment_method_data={"type": "alipay"},
-            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan,
+            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
         )
         native_url = None
         if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
