@@ -7,7 +7,10 @@ def build_reading_prompt(cards_data, category, question=""):
         "love": "爱情趋势",
         "career": "事业",
         "friendship": "友情",
-        "family": "家庭关系"
+        "family": "家庭关系",
+        "daily": "今日运程",
+        "exam": "考试运势",
+        "health": "健康状况"
     }
     cn_category = category_map.get(category, "综合")
     question_section = ""
@@ -87,7 +90,10 @@ def build_reading_prompt_stream(cards_data, category, question=""):
         "love": "爱情趋势",
         "career": "事业",
         "friendship": "友情",
-        "family": "家庭关系"
+        "family": "家庭关系",
+        "daily": "今日运程",
+        "exam": "考试运势",
+        "health": "健康状况"
     }
     cn_category = category_map.get(category, "综合")
     question_section = ""
