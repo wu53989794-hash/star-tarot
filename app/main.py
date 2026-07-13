@@ -1,5 +1,6 @@
 ﻿import random
 import json
+import os
 import logging
 from pathlib import Path
 from fastapi import FastAPI, Request
@@ -10,11 +11,23 @@ from pydantic import BaseModel
 from app.cards import ALL_CARDS
 from app.deepseek import get_reading, get_reading_stream
 
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class CharsetMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        ct = response.headers.get("content-type", "")
+        if ct.startswith("text/javascript") or ct.startswith("application/javascript"):
+            if "; charset=" not in ct:
+                response.headers["content-type"] = ct + "; charset=utf-8"
+        return response
+
 logging.basicConfig(level=logging.INFO)
 logging.getLogger().addHandler(logging.FileHandler(Path(__file__).parent.parent / "server.log"))
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="星语塔罗", description="塔罗占卜 AI 深度解读")
+app.add_middleware(CharsetMiddleware)
 
 # 请求模型
 class DrawRequest(BaseModel):
@@ -69,6 +82,9 @@ class VerifyPaymentRequest(BaseModel):
 
 class CheckUsageRequest(BaseModel):
     purchase_id: str
+
+class CheckPaymentRequest(BaseModel):
+    intent_id: str
 
 class UseReadingRequest(BaseModel):
     purchase_id: str
@@ -142,6 +158,103 @@ async def create_checkout(req: CreateCheckoutRequest):
         logger.error(f"Stripe checkout error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
+@app.post("/api/create-alipay-qr")
+async def create_alipay_qr(req: CreateCheckoutRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    base_url = req.base_url or "http://127.0.0.1:5678"
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["alipay"],
+            line_items=[{
+                "price_data": {
+                    "currency": "cny",
+                    "product_data": {"name": plan_info["name"]},
+                    "unit_amount": plan_info["amount_cny"],
+                },
+                "quantity": 1,
+            }],
+            metadata={"plan": req.plan},
+            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan,
+            cancel_url=base_url + "/",
+        )
+        qr_data = None
+        try:
+            import qrcode
+            from io import BytesIO
+            import base64 as b64
+            qr = qrcode.QRCode(box_size=8, border=2)
+            qr.add_data(session.url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            qr_data = "data:image/png;base64," + b64.b64encode(buf.getvalue()).decode()
+        except Exception:
+            qr_data = None
+        return {"session_id": session.id, "session_url": session.url, "qr_code": qr_data}
+    except Exception as e:
+        logger.error(f"Alipay QR error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/check-alipay-status")
+async def check_alipay_status(req: CheckPaymentRequest):
+    try:
+        session = stripe.checkout.Session.retrieve(req.intent_id)
+        if session.payment_status == "paid":
+            plan = session.metadata.get("plan", "") if session.metadata else ""
+            # Use the session_id as the record key
+            pid = record(req.intent_id, plan)
+            return {"status": "succeeded", "purchase_id": pid, "remaining": PLANS.get(plan, {}).get("readings", 0)}
+        elif session.status == "expired" or session.status == "canceled":
+            return {"status": "failed"}
+        else:
+            return {"status": "pending"}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+@app.get("/api/stripe-key")
+async def get_stripe_key():
+    pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+    if not pk:
+        _env_path = Path(__file__).parent.parent / ".env"
+        if _env_path.exists():
+            for _line in _env_path.read_text(encoding="utf-8").splitlines():
+                _line = _line.strip()
+                if _line.startswith("STRIPE_PUBLISHABLE_KEY="):
+                    pk = _line.split("=", 1)[1].strip().strip(chr(34)).strip(chr(39))
+                    break
+    return {"publishable_key": pk}
+
+@app.post("/api/create-embedded-checkout")
+async def create_embedded_checkout(req: CreateCheckoutRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    base_url = req.base_url or "http://127.0.0.1:5678"
+    try:
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card", "alipay"],
+            line_items=[{
+                "price_data": {
+                    "currency": "cny",
+                    "product_data": {"name": plan_info["name"]},
+                    "unit_amount": plan_info["amount_cny"],
+                },
+                "quantity": 1,
+            }],
+            ui_mode="embedded",
+            return_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan,
+        )
+        return {"client_secret": session.client_secret, "session_id": session.id}
+    except Exception as e:
+        logger.error(f"Stripe embedded checkout error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 @app.post("/api/verify-payment")
 async def verify_payment(req: VerifyPaymentRequest):
     try:
@@ -163,6 +276,35 @@ async def use_reading(req: UseReadingRequest):
     ok, r = use_one(req.purchase_id)
     return {"success": ok, "remaining": r}
 
+
+
+@app.post("/api/create-mobile-payment")
+async def create_mobile_payment(req: CreateCheckoutRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    base_url = req.base_url or "http://127.0.0.1:5678"
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=plan_info["amount_cny"],
+            currency="cny",
+            payment_method_types=["alipay"],
+            description=plan_info["name"],
+            metadata={"plan": req.plan},
+        )
+        confirmed = stripe.PaymentIntent.confirm(
+            intent.id,
+            payment_method_data={"type": "alipay"},
+            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan,
+        )
+        native_url = None
+        if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
+            native_url = confirmed.next_action.alipay_handle_redirect.native_url
+        return {"intent_id": confirmed.id, "native_url": native_url}
+    except Exception as e:
+        logger.error(f"Mobile payment error: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
 # WSGI wrapper for PythonAnywhere
 try:
     from a2wsgi import ASGIMiddleware
@@ -171,8 +313,7 @@ except ImportError:
     wsgi = None
 application = wsgi
 
-# Stripe payment endpoints
-from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining
+# Stripe payment endpointsfrom app.payment import stripe, PLANS, record, use_one, remaining as get_remaining
 
 def _wsgi_app(environ, start_response):
     """Convert ASGI FastAPI to WSGI for PythonAnywhere"""
@@ -210,3 +351,18 @@ def _wsgi_app(environ, start_response):
     finally:
         loop.close()
 application = _wsgi_app
+
+
+@app.post("/api/verify-pi")
+async def verify_pi(req: CheckPaymentRequest):
+    try:
+        intent = stripe.PaymentIntent.retrieve(req.intent_id)
+        if intent.status in ("succeeded", "processing"):
+            plan = intent.metadata.get("plan", "")
+            if plan in PLANS:
+                pid = record(intent.id, plan)
+                return {"success": True, "purchase_id": pid, "remaining": PLANS[plan]["readings"]}
+        return {"success": False, "error": "payment not complete"}
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=400)
+
