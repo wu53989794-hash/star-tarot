@@ -326,7 +326,7 @@ def _wsgi_app(environ, start_response):
         loop.close()
 application = _wsgi_app
 
-@app.post("/api/verify-pi")
+# REMOVED-ORPHAN: @app.post("/api/verify-pi")
 
 
 @app.post("/api/create-mobile-payment")
@@ -356,6 +356,7 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
         logger.error(f"Mobile payment error: {e}")
         return JSONResponse({"error": str(e)}, status_code=500)
 
+@app.post("/api/verify-pi")
 async def verify_pi(req: CheckPaymentRequest):
     try:
         intent = stripe.PaymentIntent.retrieve(req.intent_id)
