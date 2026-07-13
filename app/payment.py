@@ -68,3 +68,51 @@ def use_one(purchase_id):
     p["remaining"] -= 1
     _save(d)
     return True, p["remaining"]
+
+
+def store_session(intent_id, category, question):
+    """Store session data (category, question) associated with a PaymentIntent ID."""
+    import json, os
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent
+    DATA_DIR = BASE_DIR / "data"
+    DATA_DIR.mkdir(exist_ok=True)
+    SESSIONS_FILE = DATA_DIR / "sessions.json"
+    if SESSIONS_FILE.exists():
+        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
+    else:
+        data = {}
+    data[intent_id] = {"category": category, "question": question}
+    SESSIONS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def get_session(intent_id):
+    """Retrieve session data for a PaymentIntent ID."""
+    import json
+    from pathlib import Path
+    BASE_DIR = Path(__file__).parent.parent
+    SESSIONS_FILE = BASE_DIR / "data" / "sessions.json"
+    if SESSIONS_FILE.exists():
+        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
+        return data.get(intent_id, {})
+    return {}
+
+
+def store_session(intent_id, category, question):
+    BASE_DIR = Path(__file__).parent.parent
+    DATA_DIR = BASE_DIR / "data"
+    DATA_DIR.mkdir(exist_ok=True)
+    SESSIONS_FILE = DATA_DIR / "sessions.json"
+    if SESSIONS_FILE.exists():
+        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
+    else:
+        data = {}
+    data[intent_id] = {"category": category, "question": question}
+    SESSIONS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def get_session(intent_id):
+    BASE_DIR = Path(__file__).parent.parent
+    SESSIONS_FILE = BASE_DIR / "data" / "sessions.json"
+    if SESSIONS_FILE.exists():
+        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
+        return data.get(intent_id, {})
+    return {}

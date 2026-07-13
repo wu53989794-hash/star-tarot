@@ -132,7 +132,7 @@ async def get_all_cards_api():
 
 
 # Stripe payment endpoints
-from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining
+from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining, store_session, get_session
 
 @app.post("/api/create-checkout")
 async def create_checkout(req: CreateCheckoutRequest):
@@ -289,7 +289,7 @@ except ImportError:
 application = wsgi
 
 # Stripe payment endpoints
-from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining
+from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining, store_session, get_session
 
 def _wsgi_app(environ, start_response):
     """Convert ASGI FastAPI to WSGI for PythonAnywhere"""
@@ -353,6 +353,7 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
         native_url = None
         if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
             native_url = confirmed.next_action.alipay_handle_redirect.native_url
+        store_session(intent.id, req.category, req.question)
         return {"intent_id": confirmed.id, "native_url": native_url}
     except Exception as e:
         logger.error(f"Mobile payment error: {e}")
@@ -366,7 +367,8 @@ async def verify_pi(req: CheckPaymentRequest):
             plan = intent.metadata.get("plan", "")
             if plan in PLANS:
                 pid = record(intent.id, plan)
-                return {"success": True, "purchase_id": pid, "remaining": PLANS[plan]["readings"]}
+                sess = get_session(req.intent_id)
+                return {"success": True, "purchase_id": pid, "remaining": PLANS[plan]["readings"], "category": sess.get("category", ""), "question": sess.get("question", "")}
         return {"success": False, "error": "payment not complete"}
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=400)
