@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import urllib.parse
 
 from app.cards import ALL_CARDS
 from app.deepseek import get_reading, get_reading_stream
