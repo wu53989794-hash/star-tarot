@@ -542,16 +542,26 @@ function startPiPolling(piId, plan) {
                 state.remaining = d.remaining;
                 updateRemainingBadge();
                 closePricingModal();
-                var cat = localStorage.getItem("tarot_cat");
-                var q = localStorage.getItem("tarot_q");
-                if(piId && !localStorage.getItem("tarot_cat")){ showStep("step-draw"); document.getElementById("draw-desc").textContent = "✅ 付款成功！请回到原浏览器标签页查看占卜"; document.getElementById("btn-draw").style.display = "none"; return; } if(cat){
-                    state.selectedCategory = cat;
-                    state.question = q || "";
-                    localStorage.removeItem("tarot_cat");
-                    localStorage.removeItem("tarot_q");
+                // Use category from server if available
+                var serverCat = d.category || "";
+                var serverQ = d.question || "";
+                if(serverCat){
+                    state.selectedCategory = serverCat;
+                    state.question = serverQ;
+                    localStorage.setItem("tarot_cat", serverCat);
                     _startDraw();
                 } else {
-                    showStep("step-category");
+                    var cat = localStorage.getItem("tarot_cat");
+                    var q = localStorage.getItem("tarot_q");
+                    if(cat){
+                        state.selectedCategory = cat;
+                        state.question = q || "";
+                        localStorage.removeItem("tarot_cat");
+                        localStorage.removeItem("tarot_q");
+                        _startDraw();
+                    } else {
+                        showStep("step-category");
+                    }
                 }
             }
         });
