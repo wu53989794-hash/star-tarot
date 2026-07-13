@@ -7,7 +7,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import urllib.parse
 
 from app.cards import ALL_CARDS
 from app.deepseek import get_reading, get_reading_stream
@@ -349,7 +348,7 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
         confirmed = stripe.PaymentIntent.confirm(
             intent.id,
             payment_method_data={"type": "alipay"},
-            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan + "&cat=" + urllib.parse.quote(req.category) + "&q=" + urllib.parse.quote(req.question[:200]),
+            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
         )
         native_url = None
         if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
