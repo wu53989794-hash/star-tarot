@@ -359,7 +359,7 @@ async def create_mobile_payment(req: CreateCheckoutRequest):
 async def verify_pi(req: CheckPaymentRequest):
     try:
         intent = stripe.PaymentIntent.retrieve(req.intent_id)
-        if intent.status == "succeeded":
+        if intent.status in ("succeeded", "processing"):
             plan = intent.metadata.get("plan", "")
             if plan in PLANS:
                 pid = record(intent.id, plan)

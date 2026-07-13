@@ -758,7 +758,7 @@ function useReading() {
     var plan = p.get("plan");
     var pi = p.get("pi");
 
-    if (pi && plan) { if(localStorage.getItem("tarot_cat")){ showStep("step-draw"); document.getElementById("draw-desc").textContent = "正在验证支付..."; verifyPi(pi, plan); window.history.replaceState({}, "", "/"); } else { document.getElementById("pricing-options").style.display = "none"; document.getElementById("stripe-checkout").innerHTML = "<div style=\"text-align:center;padding:30px;color:#a090b0;\">检测到付款成功，请返回原页面...</div>"; document.getElementById("stripe-checkout").style.display = "block"; verifyPi(pi, plan); window.history.replaceState({}, "", "/"); } }
+    if (pi && plan) { if(localStorage.getItem("tarot_cat")){ showStep("step-draw"); document.getElementById("draw-desc").textContent = "正在验证支付..."; startPiPolling(pi, plan); window.history.replaceState({}, "", "/"); } else { document.getElementById("pricing-options").style.display = "none"; document.getElementById("stripe-checkout").innerHTML = "<div style=\"text-align:center;padding:30px;color:#a090b0;\">检测到付款成功，请返回原页面...</div>"; document.getElementById("stripe-checkout").style.display = "block"; startPiPolling(pi, plan); window.history.replaceState({}, "", "/"); } }
 
     if (sid && plan) { showStep("step-draw"); document.getElementById("draw-desc").textContent = "\u2726 \u652f\u4ed8\u9a8c\u8bc1\u4e2d..."; verifyPayment(sid, plan); window.history.replaceState({}, "", "/"); }
     var pid = localStorage.getItem("tarot_purchase");
