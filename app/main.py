@@ -162,7 +162,7 @@ async def create_checkout(req: CreateCheckoutRequest):
                 },
                 "quantity": 1,
             }],
-            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan,
+            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
             cancel_url=base_url + "/",
         )
         return {"url": session.url, "session_id": session.id}
@@ -189,7 +189,7 @@ async def create_alipay_qr(req: CreateCheckoutRequest):
                 "quantity": 1,
             }],
             metadata={"plan": req.plan},
-            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan,
+            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
             cancel_url=base_url + "/",
         )
         qr_data = None
