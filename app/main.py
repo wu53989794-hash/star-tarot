@@ -162,6 +162,7 @@ async def create_checkout(req: CreateCheckoutRequest):
                 },
                 "quantity": 1,
             }],
+            metadata={"plan": req.plan, "category": req.category, "question": req.question[:200]},
             success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
             cancel_url=base_url + "/",
         )
@@ -188,7 +189,7 @@ async def create_alipay_qr(req: CreateCheckoutRequest):
                 },
                 "quantity": 1,
             }],
-            metadata={"plan": req.plan},
+            metadata={"plan": req.plan, "category": req.category, "question": req.question[:200]},
             success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
             cancel_url=base_url + "/",
         )
@@ -273,7 +274,10 @@ async def verify_payment(req: VerifyPaymentRequest):
         session = stripe.checkout.Session.retrieve(req.session_id)
         if session.payment_status == "paid":
             pid = record(req.session_id, req.plan)
-            return {"success": True, "purchase_id": pid, "remaining": PLANS[req.plan]["readings"]}
+            meta = session.get("metadata", {}) or {}
+            cat = meta.get("category", "")
+            q = meta.get("question", "")
+            return {"success": True, "purchase_id": pid, "remaining": PLANS[req.plan]["readings"], "category": cat, "question": q}
         return {"success": False, "error": "payment not complete"}
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=400)
