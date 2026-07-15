@@ -9,6 +9,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.cards import ALL_CARDS
+from dotenv import load_dotenv
+
+# 启动时加载 .env 文件到环境变量，确保所有模块都能读到
+_env_path = Path(__file__).parent.parent / ".env"
+if _env_path.exists():
+    load_dotenv(_env_path)
+    logging.info(f"Loaded environment from {_env_path}")
+else:
+    logging.warning(f".env file not found at {_env_path}")
+
 from app.deepseek import get_reading, get_reading_stream
 
 from starlette.middleware.base import BaseHTTPMiddleware

@@ -8,20 +8,24 @@ logger = logging.getLogger(__name__)
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
+# 启动时尝试从 .env 加载密钥到环境变量（双保险）
+_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+if not _KEY:
+    _env_path = Path(__file__).parent.parent / ".env"
+    if _env_path.exists():
+        for _line in _env_path.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if _line.startswith("DEEPSEEK_API_KEY="):
+                _KEY = _line.split("=", 1)[1].strip().strip('"').strip("'")
+                if _KEY:
+                    os.environ["DEEPSEEK_API_KEY"] = _KEY
+                    logger.info("Loaded DeepSeek API key from .env (module-level fallback)")
+                break
+
 async def get_reading(cards_data, category, question="", api_key=None):
     """调用 DeepSeek API 获取塔罗解读"""
     if api_key is None:
         api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-
-    if not api_key:
-        env_path = Path(__file__).parent.parent / ".env"
-        if env_path.exists():
-            for line in env_path.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if line.startswith("DEEPSEEK_API_KEY="):
-                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
-                    break
-
     if not api_key:
         return {"error": "DeepSeek API Key 未配置"}
 
@@ -65,16 +69,6 @@ async def get_reading_stream(cards_data, category, question="", api_key=None):
     """流式调用 DeepSeek API 获取塔罗解读"""
     if api_key is None:
         api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-
-    if not api_key:
-        env_path = Path(__file__).parent.parent / ".env"
-        if env_path.exists():
-            for line in env_path.read_text(encoding="utf-8").splitlines():
-                line = line.strip()
-                if line.startswith("DEEPSEEK_API_KEY="):
-                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
-                    break
-
     if not api_key:
         yield f"data: {json.dumps({'error': 'DeepSeek API Key 未配置'})}\n\n"
         return

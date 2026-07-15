@@ -253,7 +253,8 @@ async function drawCards() {
 // ===== Payment Modal =====
 
 function showPaymentModal() {
-    prepaidFlow();
+    _startReading();
+    revealCards();
 }
 
 
@@ -489,7 +490,7 @@ function pollPaymentStatus(intentId, plan) {
                 state.question = q || "";
                 localStorage.removeItem("tarot_cat");
                 localStorage.removeItem("tarot_q");
-                _startDraw();
+                _doDrawAndRead(false);
             } else {
                 showStep("step-category");
             }
@@ -519,7 +520,7 @@ function verifyPi(piId, plan) {
                 state.question = q || "";
                 localStorage.removeItem("tarot_cat");
                 localStorage.removeItem("tarot_q");
-                _startDraw();
+                _doDrawAndRead(false);
             } else {
                 showStep("step-category");
             }
@@ -542,14 +543,14 @@ function startPiPolling(piId, plan) {
                 state.remaining = d.remaining;
                 updateRemainingBadge();
                 closePricingModal();
-                // Use category from server if available
+                // Use category from server if available; do NOT call _startDraw, call new flow
                 var serverCat = d.category || "";
                 var serverQ = d.question || "";
                 if(serverCat){
                     state.selectedCategory = serverCat;
                     state.question = serverQ;
                     localStorage.setItem("tarot_cat", serverCat);
-                    _startDraw();
+                    _doDrawAndRead(false);
                 } else {
                     var cat = localStorage.getItem("tarot_cat");
                     var q = localStorage.getItem("tarot_q");
@@ -558,7 +559,7 @@ function startPiPolling(piId, plan) {
                         state.question = q || "";
                         localStorage.removeItem("tarot_cat");
                         localStorage.removeItem("tarot_q");
-                        _startDraw();
+                        _doDrawAndRead(false);
                     } else {
                         showStep("step-category");
                     }
@@ -729,10 +730,9 @@ function verifyPayment(sid, plan) {
     if (state.isProcessing) return;
     state.isProcessing = true;
 
-    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){sessionStorage.setItem("stripe_ok","1");localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(piId && !localStorage.getItem("tarot_cat")){ showStep("step-draw"); document.getElementById("draw-desc").textContent = "✅ 付款成功！请回到原浏览器标签页查看占卜"; document.getElementById("btn-draw").style.display = "none"; return; } if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;var desc=document.getElementById("draw-desc");if(desc)desc.textContent="✦ 牌灵正在解读牌意...";var db=document.getElementById("btn-draw");if(db){db.querySelector(".btn-text").textContent="✦ 牌灵解读 ✦";}setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);state.readingStatus="loading";fetch("/api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cards:d2.cards,category:cat,question:q||""})}).then(function(r){return r.json()}).then(function(d3){if(d3.error)state.readingStatus="error";else{state.readingResult=d3.reading;state.readingStatus="ready";}showStep("step-result");populateRevealedCards();showReadingResult();state.readingLock=false;}).catch(function(){state.readingStatus="error";state.readingLock=false;});});}else{showStep("step-category");}}}).catch(function(){});
+    fetch("/api/verify-payment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,plan:plan})}).then(function(r){return r.json()}).then(function(d){if(d.success){sessionStorage.setItem("stripe_ok","1");localStorage.setItem("tarot_purchase",d.purchase_id);state.purchaseId=d.purchase_id;state.remaining=d.remaining;updateRemainingBadge();closePricingModal();var cat=localStorage.getItem("tarot_cat");var q=localStorage.getItem("tarot_q");if(cat){state.selectedCategory=cat;state.question=q||"";localStorage.removeItem("tarot_cat");localStorage.removeItem("tarot_q");fetch("/api/draw",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({count:3})}).then(function(r){return r.json()}).then(function(d2){state.drawnCards=d2.cards;d2.cards.forEach(function(card,i){var slot=document.getElementById("slot-"+i);if(slot){var front=slot.querySelector(".card-front");if(front){var img=front.querySelector("img");if(img){img.src="/static/cards/"+(card.id>=0&&card.id<=21?"major_"+card.id:card.id>=101&&card.id<=114?"wands_"+(card.id-101):card.id>=201&&card.id<=214?"cups_"+(card.id-201):card.id>=301&&card.id<=314?"swords_"+(card.id-301):card.id>=401&&card.id<=414?"pentacles_"+(card.id-401):"")+".png";if(card.orientation==='逆位')img.classList.add('reversed');}}}});showStep("step-draw");document.getElementById("draw-desc").textContent="占卜主题："+CATEGORY_NAMES[state.selectedCategory]+" —— 你的牌已抽好";document.querySelectorAll(".card-slot").forEach(function(s){s.classList.remove("flipped","draw-animate");});setTimeout(function(){var sl=document.querySelectorAll(".card-slot");sl.forEach(function(s,i){setTimeout(function(){s.classList.add("draw-animate");},i*200);});},100);setTimeout(function(){revealCards();_startReading();state.isProcessing=false;},1000);});}else{showStep("step-category");state.isProcessing=false;}}}).catch(function(){state.isProcessing=false;});
 
 }
-
 function updateRemainingBadge() {
 
     var el=document.getElementById("remaining-badge");var ct=document.getElementById("remaining-count");
@@ -998,7 +998,7 @@ function confirmCardSelection() {
     if (state.isProcessing) return;
     state.isProcessing = true;
 
-    if (state.remaining > 0) { _startDraw(); return; }
+    if (state.remaining > 0) { _doDrawAndRead(true); return; }
 
     var pid = localStorage.getItem("tarot_purchase");
 
@@ -1010,120 +1010,123 @@ function confirmCardSelection() {
 
     btn.querySelector(".btn-text").textContent = "\u2726 \u724c\u7075\u6b63\u5728\u89e3\u8bfb \u2726";
 
-    fetch("/api/check-usage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:pid})}).then(function(r){return r.json()}).then(function(d){state.remaining=d.remaining;state.purchaseId=pid;updateRemainingBadge();if(d.remaining>0){_startDraw();}else{btn.disabled=false;btn.querySelector(".btn-text").textContent="\u2726 \u5df2\u9009 0/3";state.isProcessing=false;showPricingModal();}});
+    fetch("/api/check-usage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:pid})}).then(function(r){return r.json()}).then(function(d){state.remaining=d.remaining;state.purchaseId=pid;updateRemainingBadge();if(d.remaining>0){_doDrawAndRead(true);}else{btn.disabled=false;btn.querySelector(".btn-text").textContent="\u2726 \u5df2\u9009 0/3";state.isProcessing=false;showPricingModal();}});
 
 }
 
 
 
-function _startDraw() {
+function _doDrawAndRead(useUserCards) {
 
     var btn = document.getElementById("btn-browse-draw");
 
-    btn.disabled = true;
-
-    btn.querySelector(".btn-text").textContent = "\u2726 \u724c\u7075\u6b63\u5728\u89e3\u8bfb \u2726";
-
-
+    if (btn) {
+        btn.disabled = true;
+        btn.querySelector(".btn-text").textContent = "✦ 牌灵正在解读 ✦";
+    }
 
     showStep("step-draw");
-    document.getElementById("draw-desc").textContent = "\u2726 \u724c\u7075\u6b63\u5728\u89e3\u8bfb\u724c\u610f...";
+    document.getElementById("draw-desc").textContent = "✦ 牌灵正在解读牌意...";
     var __b=document.getElementById("btn-draw");if(__b)__b.disabled=true;
     document.querySelectorAll(".card-slot").forEach(function(s){s.classList.remove("flipped","draw-animate");});
+
+    var fetchBody = useUserCards
+        ? JSON.stringify({ count: 3, card_ids: state.selectedCardIndices })
+        : JSON.stringify({ count: 3 });
+
     fetch("/api/draw", {
-
         method: "POST",
-
         headers: { "Content-Type": "application/json" },
-
-        body: JSON.stringify({ count: 3 })
-
+        body: fetchBody
     })
-
     .then(function(r) { return r.json(); })
-
     .then(function(data) {
-
         state.drawnCards = data.cards;
-
         data.cards.forEach(function(card, i) {
-
             var slot = document.getElementById("slot-" + i);
-
             if (slot) {
-
                 var front = slot.querySelector(".card-front");
-
                 if (front) {
-
                     var img = front.querySelector("img");
-
-                    if (img) { img.src = getCardImageUrl(card); if (card.orientation === '逆位') img.classList.add('reversed'); }
-
+                    if (img) {
+                        img.src = getCardImageUrl(card);
+                        if (card.orientation === '逆位') img.classList.add('reversed');
+                    }
                 }
-
             }
-
         });
 
         showStep("step-draw");
-
         document.getElementById("draw-desc").textContent =
-
-            "\u535c\u535c\u4e3b\u9898\uff1a" + CATEGORY_NAMES[state.selectedCategory] + " \u2014\u2014 \u4f60\u7684\u724c\u5df2\u62bd\u597d";
-
+            "占卜主题：" + CATEGORY_NAMES[state.selectedCategory] + " —— 你的牌已抽好";
         document.querySelectorAll(".card-slot").forEach(function(slot) {
-
             slot.classList.remove("flipped", "draw-animate");
-
         });
 
+        // Animate cards appearing
         setTimeout(function() {
-
             var slots = document.querySelectorAll(".card-slot");
-
             slots.forEach(function(slot, i) {
-
                 setTimeout(function() { slot.classList.add("draw-animate"); }, i * 200);
-
             });
-
         }, 100);
 
+        // Flip cards and start reading
         setTimeout(function() {
-
-            showPaymentModal();
-
-            btn.disabled = false;
-
-            btn.querySelector(".btn-text").textContent = "\u2726 \u5df2\u9009 0/3";
-
+            revealCards();
+            _startReading();
+            if (btn) {
+                btn.disabled = false;
+                btn.querySelector(".btn-text").textContent = "✦ 已选 0/3";
+            }
             state.isProcessing = false;
-
-        }, 1800);
-
+        }, 1000);
     })
-
     .catch(function(err) {
-
-        console.error("\u9009\u724c\u5931\u8d25:", err);
-
-        alert("\u9009\u724c\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5");
-
-        btn.disabled = false;
-
-        btn.querySelector(".btn-text").textContent = "\u2726 \u5df2\u9009 0/3";
-
+        console.error("选牌失败:", err);
+        alert("选牌失败，请重试");
+        if (btn) {
+            btn.disabled = false;
+            btn.querySelector(".btn-text").textContent = "✦ 已选 0/3";
+        }
         state.isProcessing = false;
-
     });
-
 }
 
 
 
+// ===== Reading after payment =====
 
+function _startReading() {
+    if (state.readingLock) return;
+    state.readingLock = true;
+    state.readingStatus = 'loading';
+    useReading();
+    var d = document.getElementById("draw-desc");
+    if (d) d.textContent = "✦ 牌灵正在解读牌意...✦";
+    var dbBtn = document.getElementById("btn-draw");
+    if (dbBtn) dbBtn.disabled = true;
 
+    fetch("/api/reading", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            cards: state.drawnCards,
+            category: state.selectedCategory,
+            question: state.question
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { state.readingStatus = 'error'; }
+        else { state.readingResult = data.reading; state.readingStatus = 'ready'; }
+        showStep("step-result");
+        populateRevealedCards();
+        showReadingResult();
+        state.readingLock = false;
+    })
+    .catch(function() { state.readingStatus = 'error'; showReadingResult(); state.readingLock = false; });
+}
 
 // ===== Markdown to HTML =====
  
@@ -1165,4 +1168,5 @@ function markdownToHtml(md) {
     return '<p>' + html + '</p>';
 
 }
+
 
