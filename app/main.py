@@ -273,10 +273,10 @@ async def verify_payment(req: VerifyPaymentRequest):
     try:
         session = stripe.checkout.Session.retrieve(req.session_id)
         if session.payment_status == "paid":
-            pid = record(req.session_id, req.plan)
             meta = session.get("metadata", {}) or {}
             cat = meta.get("category", "")
             q = meta.get("question", "")
+            pid = record(req.session_id, req.plan, cat, q)
             return {"success": True, "purchase_id": pid, "remaining": PLANS[req.plan]["readings"], "category": cat, "question": q}
         return {"success": False, "error": "payment not complete"}
     except Exception as e:
@@ -329,7 +329,7 @@ async def verify_pi(req: CheckPaymentRequest):
         if intent.status in ("succeeded", "processing"):
             plan = intent.metadata.get("plan", "")
             if plan in PLANS:
-                pid = record(intent.id, plan)
+                pid = record(intent.id, plan, sess.get("category", ""), sess.get("question", ""))
                 sess = get_session(req.intent_id)
                 return {"success": True, "purchase_id": pid, "remaining": PLANS[plan]["readings"], "category": sess.get("category", ""), "question": sess.get("question", "")}
         return {"success": False, "error": "payment not complete"}

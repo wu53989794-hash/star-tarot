@@ -49,14 +49,14 @@ def _find_existing(session_id):
             return pid
     return None
 
-def record(session_id, plan):
+def record(session_id, plan, category="", question=""):
     existing = _find_existing(session_id)
     if existing:
         return existing
     d = _load()
     pid = uuid.uuid4().hex[:12]
     info = PLANS[plan]
-    d[pid] = {"session_id": session_id, "plan": plan, "readings": info["readings"], "remaining": info["readings"], "created": datetime.now().isoformat()}
+    d[pid] = {"session_id": session_id, "plan": plan, "readings": info["readings"], "remaining": info["readings"], "created": datetime.now().isoformat(), "category": category, "question": question}
     _save(d)
     return pid
 
