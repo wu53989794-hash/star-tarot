@@ -33,10 +33,15 @@ def health():
     return jsonify({"status": "ok", "cards_count": len(ALL_CARDS)})
 @app.route("/api/draw", methods=["POST"])
 def draw_cards():
+    import sys as _sys
+    _sys.stderr.write("DRAW_FUNC: CALLED\n")
+    _sys.stderr.flush()
     drawn = _sysrand.sample(ALL_CARDS, 3)
     _sysrand.shuffle(drawn)
     result = [dict(c) | {"orientation": _sysrand.choice(["正位", "逆位"])} for c in drawn]
     logger.info("Draw: %s", [c["id"] for c in result])
+    _sys.stderr.write("DRAW_FUNC: ids=%s\n" % str([c["id"] for c in result]))
+    _sys.stderr.flush()
     resp = jsonify({"cards": result})
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return resp
