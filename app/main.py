@@ -1,4 +1,4 @@
-import random, json, os, logging
+import secrets, random, json, os, logging
 from pathlib import Path
 from flask import Flask, request, jsonify, Response, send_from_directory
 from app.cards import ALL_CARDS
@@ -35,9 +35,9 @@ def draw_cards():
     data = request.get_json() or {}
     count = min(data.get("count", 3), 3)
     card_ids = data.get("card_ids")
-    drawn = [c for c in ALL_CARDS if c["id"] in card_ids] if card_ids else random.sample(ALL_CARDS, count)
-    random.shuffle(drawn)
-    result = [dict(c) | {"orientation": random.choice(["正位", "逆位"])} for c in drawn]
+    drawn = [c for c in ALL_CARDS if c["id"] in card_ids] if card_ids else secrets.SystemRandom().sample(ALL_CARDS, count)
+    secrets.SystemRandom().shuffle(drawn)
+    result = [dict(c) | {"orientation": secrets.SystemRandom().choice(["正位", "逆位"])} for c in drawn]
     return jsonify({"cards": result})
 @app.route("/api/reading", methods=["POST"])
 def reading():
