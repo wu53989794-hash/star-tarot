@@ -1055,21 +1055,33 @@ var _selectedTrustPlan = "";
 
 
 function showPaymentQr(plan) {
-
     _selectedTrustPlan = plan;
-
-    var names = {"2_readings": "两次占卜", "3_readings": "三次占卜"};
-
-    var amounts = {"2_readings": "¥14.99", "3_readings": "¥19.99"};
-
+    var names = {"2_readings": "????", "3_readings": "????"};
+    var amounts = {"2_readings": "\u00a514.99", "3_readings": "\u00a519.99"};
     document.getElementById("pricing-options").style.display = "none";
-
     document.getElementById("payment-qr-area").style.display = "block";
-
     document.getElementById("payment-qr-plan").textContent = names[plan] || plan;
-
     document.getElementById("payment-qr-amount").textContent = amounts[plan] || "";
-
+    var payBtn = document.getElementById("btn-confirm-pay");
+    if (payBtn) payBtn.style.display = "none";
+    var qrImgs = document.querySelectorAll("#payment-qr-area img");
+    var timer = null;
+    function showPayBtn() {
+        var b = document.getElementById("btn-confirm-pay");
+        if (b) b.style.display = "inline-block";
+        var h = document.getElementById("payment-save-status");
+        if (h) h.innerHTML = "<span style='color:#8c8;font-size:0.8em;'>done</span>";
+    }
+    for (var i = 0; i < qrImgs.length; i++) {
+        (function(img) {
+            img.addEventListener("contextmenu", function(e) { showPayBtn(); });
+            img.addEventListener("touchstart", function() {
+                timer = setTimeout(function() { showPayBtn(); }, 600);
+            });
+            img.addEventListener("touchend", function() { clearTimeout(timer); });
+            img.addEventListener("touchmove", function() { clearTimeout(timer); });
+        })(qrImgs[i]);
+    }
 }
 
 
@@ -1964,3 +1976,11 @@ function markdownToHtml(md) {
 
 
 
+
+
+function showPayButton() {
+    var b = document.getElementById("btn-confirm-pay");
+    if (b) b.style.display = "inline-block";
+    var h = document.getElementById("payment-save-status");
+    if (h) h.innerHTML = "<span style='color:#8c8;font-size:0.8em;'>done</span>";
+}
