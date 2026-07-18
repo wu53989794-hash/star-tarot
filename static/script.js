@@ -658,7 +658,7 @@ function revealCards() {
 
 
 
-        }, i * 200 + 200);
+        }, i * 80 + 100);
 
 
 
