@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>星语塔罗 — 管理后台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#0d0221;color:#e8dcc8;padding:30px 20px;}
+h1{color:#d4a843;text-align:center;margin-bottom:10px;font-size:1.6em;letter-spacing:2px;}
+h2{color:#d4a843;margin:20px 0 10px;font-size:1.2em;}
+.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:30px;}
+.tab{padding:10px 20px;background:rgba(42,26,78,0.5);border:1px solid rgba(212,168,67,0.2);border-radius:8px;color:#a090b0;cursor:pointer;}
+.tab.active{background:rgba(212,168,67,0.15);border-color:#d4a843;color:#d4a843;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+.card{background:rgba(42,26,78,0.5);border:1px solid rgba(212,168,67,0.2);border-radius:12px;padding:24px;max-width:800px;margin:0 auto 20px;}
+table{width:100%;border-collapse:collapse;font-size:0.85em;}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(212,168,67,0.1);}
+th{color:#d4a843;font-weight:normal;}
+td{color:#c8b8d8;}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.8em;}
+.badge.trust{background:rgba(212,168,67,0.2);color:#d4a843;}
+.badge.verified{background:rgba(100,200,100,0.15);color:#8c8;}
+.badge.not-verified{background:rgba(200,100,100,0.15);color:#c88;}
+.badge.banned{background:rgba(200,50,50,0.2);color:#e44;}
+.empty{text-align:center;color:#6a5a7a;padding:30px;}
+.btn{display:inline-block;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:0.8em;font-family:inherit;}
+.btn-ban{background:#c44;color:#fff;}
+.btn-unban{background:#4a4;color:#fff;}
+.btn-verify{background:#d4a843;color:#1a0a2e;}
+.btn-grant{background:#d4a843;color:#1a0a2e;padding:12px 30px;font-size:1em;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-family:inherit;}
+select{padding:8px;background:#1a0a2e;color:#e8dcc8;border:1px solid rgba(212,168,67,0.3);border-radius:6px;margin-right:10px;font-family:inherit;}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#4a3a5a;color:#e8dcc8;padding:12px 24px;border-radius:8px;display:none;z-index:100;}
+.toast.show{display:block;}
+.grant-row{display:flex;align-items:center;gap:10px;margin-bottom:15px;}
+</style>
+</head>
+<body>
+<h1>✦ 星语塔罗 · 管理后台 ✦</h1>
+
+<div class="tabs">
+<div class="tab active" onclick="switchTab('devices')">设备管理</div>
+<div class="tab" onclick="switchTab("manual")">手动加次数</div>
+<div class="tab" onclick="switchTab('purchases')">购买记录</div>
+</div>
+
+<!-- Tab 1: Devices -->
+<div id="tab-devices" class="tab-content active">
+<div class="card">
+<h2>设备列表（信任制付款）</h2>
+<p style="color:#7a6a8a;font-size:0.8em;margin-bottom:15px;">CSV已验证 = 支付宝/微信账单已核对，没付钱的可以点"禁止"</p>
+<div id="devices-table"><p class="empty">加载中...</p></div>
+</div>
+</div>
+
+<!-- Tab 2: Manual grant -->
+<div id="tab-manual" class="tab-content">
+<div class="card">
+<h2>手动加占卜次数</h2>
+<div class="grant-row">
+<select id="plan-select">
+<option value="2_readings">两次占卜 — ¥14.99</option>
+<option value="3_readings">三次占卜 — ¥19.99</option>
+</select>
+<button class="btn-grant" onclick="grantReading()">确认到账，手动加次数</button>
+</div>
+<div id="grant-result" style="color:#8c8;font-size:0.85em;"></div>
+</div>
+</div>
+
+<!-- Tab 3: Purchases -->
+<div id="tab-purchases" class="tab-content">
+<div class="card">
+<h2>所有购买记录</h2>
+<div id="purchases-table"><p class="empty">加载中...</p></div>
+</div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function showToast(msg, isErr){
+    var t=document.getElementById("toast");
+    t.textContent=msg;
+    t.style.background=isErr?"#5a2a2a":"#4a3a5a";
+    t.classList.add("show");
+    setTimeout(function(){t.classList.remove("show");},3000);
+}
+
+function switchTab(name){
+    document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active");});
+    document.querySelectorAll(".tab-content").forEach(function(t){t.classList.remove("active");});
+    document.querySelector('.tab[onclick*="'+name+'"]').classList.add("active");
+    document.getElementById("tab-"+name).classList.add("active");
+}
+
+// ===== Devices =====
+function loadDevices(){
+    fetch("/api/admin/devices").then(function(r){return r.json()}).then(function(d){
+        var devs=d.devices||[];
+        var html="";
+        if(devs.length===0){html="<p class='empty'>暂无设备记录</p>";}
+        else{
+            html="<table><tr><th>设备ID</th><th>IP</th><th>总次数</th><th>已用</th><th>CSV核对</th><th>操作</th></tr>";
+            devs.forEach(function(v){
+                var status=v.banned?"<span class='badge banned'>已禁止</span>":(v.csv_verified?"<span class='badge verified'>已验证</span>":"<span class='badge not-verified'>未核对</span>");
+                var actions="";
+                if(v.banned){
+                    actions='<button class="btn btn-unban" onclick="unbanDev(\''+v.device_id+'\')">解禁</button>';
+                } else if(!v.csv_verified){
+                    actions='<button class="btn btn-verify" onclick="verifyCsv(\''+v.device_id+'\')">确认已付款</button> ';
+                    actions+='<button class="btn btn-ban" onclick="banDev(\''+v.device_id+'\')">没付款，禁止</button>';
+                } else {
+                    actions='<span style="color:#6a5a7a;">已核对</span>';
+                }
+                html+='<tr><td style="font-size:0.7em;color:#7a6a8a;">'+v.device_id.substr(0,20)+'...</td><td>'+v.ip+'</td><td>'+v.total_readings+'</td><td>'+v.used+'</td><td>'+status+'</td><td>'+actions+'</td></tr>';
+            });
+            html+="</table>";
+        }
+        document.getElementById("devices-table").innerHTML=html;
+    }).catch(function(){
+        document.getElementById("devices-table").innerHTML="<p class='empty'>加载失败</p>";
+    });
+}
+
+function banDev(id){
+    fetch("/api/admin/ban",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_id:id})})
+    .then(function(r){return r.json()}).then(function(d){
+        if(d.success){showToast("已禁止该设备");loadDevices();loadPurchases();}
+    });
+}
+function unbanDev(id){
+    fetch("/api/admin/unban",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_id:id})})
+    .then(function(r){return r.json()}).then(function(d){if(d.success){showToast("已解禁");loadDevices();loadPurchases();}});
+}
+function verifyCsv(id){
+    fetch("/api/admin/verify-csv",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_id:id})})
+    .then(function(r){return r.json()}).then(function(d){if(d.success){showToast("已标记为已验证");loadDevices();loadPurchases();}});
+}
+
+// ===== Manual grant =====
+function grantReading(){
+    var btn=document.querySelector(".btn-grant");
+    var plan=document.getElementById("plan-select").value;
+    btn.disabled=true;btn.textContent="处理中...";
+    fetch("/api/admin/grant",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan})})
+    .then(function(r){return r.json()}).then(function(d){
+        if(d.success){document.getElementById("grant-result").textContent="已添加 "+d.readings+" 次 (ID: "+d.purchase_id+")";showToast("加次数成功");loadPurchases();loadDevices();}
+    }).catch(function(){showToast("请求失败",true);})
+    .finally(function(){btn.disabled=false;btn.textContent="确认到账，手动加次数";});
+}
+
+// ===== Purchases =====
+function loadPurchases(){
+    fetch("/api/admin/purchases").then(function(r){return r.json()}).then(function(d){
+        var ps=d.purchases||[];var html="";
+        if(ps.length===0){html="<p class='empty'>暂无记录</p>";}
+        else{
+            html="<table><tr><th>ID</th><th>方案</th><th>来源</th><th>已用/总数</th><th>设备</th><th>时间</th></tr>";
+            ps.forEach(function(p){
+                var src=p.manual?"<span class='badge trust'>信任</span>":"<span style='color:#7a6a8a;'>Stripe</span>";
+                if(p.banned) src+=" <span class='badge banned'>禁止</span>";
+                else if(!p.csv_verified) src+=" <span class='badge not-verified'>未核对</span>";
+                html+="<tr><td style='font-size:0.7em;color:#7a6a8a;'>"+p.id+"</td><td>"+p.plan+"</td><td>"+src+"</td><td>"+(p.readings-p.remaining)+"/"+p.readings+"</td><td style='font-size:0.7em;'>"+(p.device_id||"-")+"</td><td style='font-size:0.7em;'>"+(p.created||"-")+"</td></tr>";
+            });
+            html+="</table>";
+        }
+        document.getElementById("purchases-table").innerHTML=html;
+    });
+}
+
+loadDevices();loadPurchases();
+setInterval(loadDevices,15000);
+</script>
+</body>
+</html>

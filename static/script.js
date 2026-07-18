@@ -755,6 +755,83 @@ function useReading() {
 
 
 
+
+// ===== Trust-based payment =====
+
+function getOrCreateDeviceId() {
+    var did = localStorage.getItem("tarot_device_id");
+    if (!did) {
+        did = "dev_" + Math.random().toString(36).substr(2, 16) + "_" + Date.now().toString(36);
+        localStorage.setItem("tarot_device_id", did);
+    }
+    return did;
+}
+
+var _selectedTrustPlan = "";
+
+function showPaymentQr(plan) {
+    _selectedTrustPlan = plan;
+    var names = {"2_readings": "两次占卜", "3_readings": "三次占卜"};
+    var amounts = {"2_readings": "¥14.99", "3_readings": "¥19.99"};
+    document.getElementById("pricing-options").style.display = "none";
+    document.getElementById("payment-qr-area").style.display = "block";
+    document.getElementById("payment-qr-plan").textContent = names[plan] || plan;
+    document.getElementById("payment-qr-amount").textContent = amounts[plan] || "";
+}
+
+function confirmTrustPayment() {
+    var btn = document.querySelector("#payment-qr-area button");
+    var resultDiv = document.getElementById("trust-result");
+    if (!_selectedTrustPlan) return;
+    btn.disabled = true;
+    btn.textContent = "处理中...";
+    resultDiv.textContent = "";
+
+    var cat = state.selectedCategory || localStorage.getItem("tarot_cat") || "";
+    var q = state.question || "";
+    var did = getOrCreateDeviceId();
+
+    fetch("/api/trust-payment", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({plan: _selectedTrustPlan, device_id: did, category: cat, question: q})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if(d.success){
+            localStorage.setItem("tarot_purchase", d.purchase_id);
+            state.purchaseId = d.purchase_id;
+            state.remaining = d.remaining;
+            updateRemainingBadge();
+            closePricingModal();
+            btn.disabled = false;
+            btn.textContent = "我已付款，立即解锁";
+            resultDiv.textContent = "";
+            // Trigger the draw+reading flow
+            if(state.selectedCategory && state.drawnCards && state.drawnCards.length > 0){
+                showStep("step-draw");
+                setTimeout(function(){ revealCards(); _startReading(); }, 500);
+            } else if(state.selectedCategory){
+                _doDrawAndRead(false);
+            } else {
+                showStep("step-category");
+            }
+        } else if(d.error === "banned"){
+            resultDiv.innerHTML = "<span style='color:#e06060;'>该设备已被禁止使用</span>";
+            btn.disabled = false;
+            btn.textContent = "我已付款，立即解锁";
+        } else {
+            resultDiv.innerHTML = "<span style='color:#e06060;'>请求失败: " + (d.message || d.error || "未知错误") + "</span>";
+            btn.disabled = false;
+            btn.textContent = "我已付款，立即解锁";
+        }
+    })
+    .catch(function(){
+        resultDiv.innerHTML = "<span style='color:#e06060;'>网络错误，请重试</span>";
+        btn.disabled = false;
+        btn.textContent = "我已付款，立即解锁";
+    });
+}
 // ===== Initialize =====
 
 // Check Stripe redirect and existing purchase

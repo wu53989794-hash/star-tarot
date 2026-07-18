@@ -336,6 +336,76 @@ async def verify_pi(req: CheckPaymentRequest):
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=400)
 
+
+
+# ===== Admin & Trust-based Payment =====
+from app.payment import manual_grant, list_purchases, is_banned, ban_device, unban_device, mark_csv_verified, get_device_summary
+
+@app.get("/admin")
+async def admin_page():
+    admin_path = Path(__file__).parent.parent / "static" / "admin.html"
+    if admin_path.exists():
+        return HTMLResponse(content=admin_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>管理后台</h1><p>admin.html not found</p>")
+
+@app.get("/api/admin/purchases")
+async def admin_list_purchases():
+    return {"purchases": list_purchases()}
+
+@app.get("/api/admin/devices")
+async def admin_list_devices():
+    return {"devices": get_device_summary()}
+
+class GrantRequest(BaseModel):
+    plan: str
+
+@app.post("/api/admin/grant")
+async def admin_grant(req: GrantRequest):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    pid = manual_grant(req.plan)
+    return {"success": True, "purchase_id": pid, "plan": req.plan, "readings": plan_info["readings"]}
+
+@app.post("/api/admin/ban")
+async def admin_ban_device(req: Request):
+    body = await req.json()
+    device_id = body.get("device_id", "")
+    ip = body.get("ip", "")
+    ban_device(device_id, ip)
+    return {"success": True}
+
+@app.post("/api/admin/unban")
+async def admin_unban_device(req: Request):
+    body = await req.json()
+    device_id = body.get("device_id", "")
+    unban_device(device_id)
+    return {"success": True}
+
+@app.post("/api/admin/verify-csv")
+async def admin_verify_csv(req: Request):
+    body = await req.json()
+    device_id = body.get("device_id", "")
+    mark_csv_verified(device_id)
+    return {"success": True}
+
+class ManualPaymentRequest(BaseModel):
+    plan: str
+    device_id: str = ""
+    category: str = ""
+    question: str = ""
+
+@app.post("/api/trust-payment")
+async def trust_payment(req: ManualPaymentRequest, request: Request):
+    plan_info = PLANS.get(req.plan)
+    if not plan_info:
+        return JSONResponse({"error": "invalid plan"}, status_code=400)
+    ip = request.client.host if request.client else ""
+    if is_banned(req.device_id, ip):
+        return JSONResponse({"error": "banned", "message": "该设备已被禁止使用"}, status_code=403)
+    pid = manual_grant(req.plan, req.device_id, ip)
+    return {"success": True, "purchase_id": pid, "remaining": plan_info["readings"], "plan": req.plan, "readings": plan_info["readings"]}
+
 # ===== WSGI entry point for PythonAnywhere =====
 from a2wsgi import ASGIMiddleware
 application = ASGIMiddleware(app)

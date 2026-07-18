@@ -97,22 +97,120 @@ def get_session(intent_id):
     return {}
 
 
-def store_session(intent_id, category, question):
-    BASE_DIR = Path(__file__).parent.parent
-    DATA_DIR = BASE_DIR / "data"
-    DATA_DIR.mkdir(exist_ok=True)
-    SESSIONS_FILE = DATA_DIR / "sessions.json"
-    if SESSIONS_FILE.exists():
-        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
-    else:
-        data = {}
-    data[intent_id] = {"category": category, "question": question}
-    SESSIONS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-def get_session(intent_id):
-    BASE_DIR = Path(__file__).parent.parent
-    SESSIONS_FILE = BASE_DIR / "data" / "sessions.json"
-    if SESSIONS_FILE.exists():
-        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
-        return data.get(intent_id, {})
-    return {}
+
+
+# ===== Trust-based payment & admin =====
+
+def manual_grant(plan, device_id="", ip=""):
+    """Manually grant a purchase record (used when admin confirms payment)."""
+    d = _load()
+    pid = uuid.uuid4().hex[:12]
+    info = PLANS[plan]
+    d[pid] = {
+        "session_id": "trust_" + pid,
+        "plan": plan,
+        "readings": info["readings"],
+        "remaining": info["readings"],
+        "created": datetime.now().isoformat(),
+        "category": "", "question": "",
+        "manual": True,
+        "device_id": device_id,
+        "ip": ip,
+        "csv_verified": False,
+        "banned": False
+    }
+    _save(d)
+    return pid
+
+def list_purchases():
+    """List all purchases for admin view."""
+    d = _load()
+    result = []
+    for pid, info in d.items():
+        result.append({
+            "id": pid,
+            "plan": info.get("plan", ""),
+            "readings": info.get("readings", 0),
+            "remaining": info.get("remaining", 0),
+            "created": info.get("created", ""),
+            "manual": info.get("manual", False),
+            "csv_verified": info.get("csv_verified", False),
+            "banned": info.get("banned", False),
+            "device_id": info.get("device_id", ""),
+            "ip": info.get("ip", ""),
+        })
+    result.sort(key=lambda x: x.get("created", ""), reverse=True)
+    return result
+
+BANNED_FILE = DATA_DIR / "banned.json"
+
+def is_banned(device_id, ip):
+    if BANNED_FILE.exists():
+        bdata = json.loads(BANNED_FILE.read_text(encoding="utf-8"))
+        if device_id and device_id in bdata.get("devices", []):
+            return True
+        if ip and ip in bdata.get("ips", []):
+            return True
+    return False
+
+def ban_device(device_id, ip=""):
+    bdata = {"devices": [], "ips": []}
+    if BANNED_FILE.exists():
+        bdata = json.loads(BANNED_FILE.read_text(encoding="utf-8"))
+    if device_id and device_id not in bdata["devices"]:
+        bdata["devices"].append(device_id)
+    if ip and ip not in bdata["ips"]:
+        bdata["ips"].append(ip)
+    BANNED_FILE.write_text(json.dumps(bdata, ensure_ascii=False, indent=2), encoding="utf-8")
+    d = _load()
+    changed = False
+    for pid, info in d.items():
+        if info.get("device_id") == device_id:
+            info["banned"] = True
+            changed = True
+    if changed:
+        _save(d)
+
+def unban_device(device_id):
+    if BANNED_FILE.exists():
+        bdata = json.loads(BANNED_FILE.read_text(encoding="utf-8"))
+        if device_id in bdata["devices"]:
+            bdata["devices"].remove(device_id)
+            BANNED_FILE.write_text(json.dumps(bdata, ensure_ascii=False, indent=2), encoding="utf-8")
+    d = _load()
+    changed = False
+    for pid, info in d.items():
+        if info.get("device_id") == device_id:
+            info["banned"] = False
+            changed = True
+    if changed:
+        _save(d)
+
+def mark_csv_verified(device_id):
+    d = _load()
+    changed = False
+    for pid, info in d.items():
+        if info.get("device_id") == device_id:
+            info["csv_verified"] = True
+            changed = True
+    if changed:
+        _save(d)
+
+def get_device_summary():
+    d = _load()
+    devices = {}
+    for pid, info in d.items():
+        dev = info.get("device_id", "")
+        if not dev:
+            continue
+        if dev not in devices:
+            devices[dev] = {"device_id": dev, "total_readings": 0, "used": 0, "csv_verified": True, "banned": False, "ip": info.get("ip", ""), "purchases": []}
+        devices[dev]["total_readings"] += info.get("readings", 0)
+        devices[dev]["used"] += info.get("readings", 0) - info.get("remaining", 0)
+        if not info.get("csv_verified", False):
+            devices[dev]["csv_verified"] = False
+        if info.get("banned", False):
+            devices[dev]["banned"] = True
+        devices[dev]["purchases"].append(pid)
+    return list(devices.values())

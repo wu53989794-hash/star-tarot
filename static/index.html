@@ -1,280 +1,471 @@
-﻿<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>星语塔罗 — 神秘塔罗占卜</title>
-                <link rel="stylesheet" href="/static/style.css?v=99">
-</head>
-<body>
-    <div id="app">
-        <header class="hero">
-            <div class="stars-bg"></div>
-            <div class="hero-content">
-                <h1 class="title-glow">✦ 星语塔罗 ✦</h1>
-                <p class="subtitle">倾听宇宙的声音，指引你的未来</p>
-                <div id="remaining-badge" style="display:none;margin-top:10px;font-size:0.85em;color:#a090b0;letter-spacing:1px;">剩余 <span id="remaining-count" style="color:#d4a843;font-weight:bold;">0</span> 次占卜</div>
-            </div>
-        </header>
-
-        <!-- Step 1: Category Selection -->
-        <section id="step-category" class="step active">
-            <div class="section-inner">
-                <h2 class="step-title">选择你的占卜主题</h2>
-                <p class="step-desc">你心中最想探寻的方向是……</p>
-                <div class="category-grid">
-                    <button class="category-btn" data-category="fortune" onclick="selectCategory('fortune')">
-                        <span class="cat-icon">✦</span>
-                        <span class="cat-name">短期运程</span>
-                        <span class="cat-sub">近日运势指引</span>
-                    </button>
-                    <button class="category-btn" data-category="love" onclick="selectCategory('love')">
-                        <span class="cat-icon">♥</span>
-                        <span class="cat-name">爱情趋势</span>
-                        <span class="cat-sub">情感走向洞察</span>
-                    </button>
-                    <button class="category-btn" data-category="career" onclick="selectCategory('career')">
-                        <span class="cat-icon">▲</span>
-                        <span class="cat-name">事业</span>
-                        <span class="cat-sub">职场发展指引</span>
-                    </button>
-                    <button class="category-btn" data-category="friendship" onclick="selectCategory('friendship')">
-                        <span class="cat-icon">◆</span>
-                        <span class="cat-name">友情</span>
-                        <span class="cat-sub">人际缘分解读</span>
-                    </button>
-                    <button class="category-btn" data-category="family" onclick="selectCategory('family')">
-                        <span class="cat-icon">☽</span>
-                        <span class="cat-name">家庭关系</span>
-                        <span class="cat-sub">家人和谐之道</span>
-                    </button>
-                    <button class="category-btn" data-category="daily" onclick="selectCategory('daily')">
-                        <span class="cat-icon">☀</span>
-                        <span class="cat-name">今日运程</span>
-                        <span class="cat-sub">一日运势指引</span>
-                    </button>
-                    <button class="category-btn" data-category="exam" onclick="selectCategory('exam')">
-                        <span class="cat-icon">✎</span>
-                        <span class="cat-name">考试运势</span>
-                        <span class="cat-sub">学业考试洞察</span>
-                    </button>
-                    <button class="category-btn" data-category="health" onclick="selectCategory('health')">
-                        <span class="cat-icon">✚</span>
-                        <span class="cat-name">健康状况</span>
-                        <span class="cat-sub">身心安康指南</span>
-                    </button>
-                    <button class="category-btn" data-category="other" onclick="selectCategory('other')">
-                        <span class="cat-icon">✦</span>
-                        <span class="cat-name">其他</span>
-                        <span class="cat-sub">其他领域问题</span>
-                    </button>
-               </div>
-            </div>
-       </section>
-        <!-- Question Dialog -->
-        <div id="question-overlay" class="modal-overlay" style="display:none;">
-            <div class="modal-backdrop" onclick="closeQuestionModal()"></div>
-            <div class="modal-content question-modal">
-                <button class="modal-close" onclick="closeQuestionModal()">&times;</button>
-                <div class="question-icon">🔮</div>
-                <h2 class="question-title">请写下你的具体问题</h2>
-                <p class="question-desc" id="question-desc">你将占卜「<span id="question-category-label"></span>」—— 把你心中所想写下来吧</p>
-                <textarea class="question-textarea" id="question-text" rows="5" placeholder="例如：我最近在工作上遇到了瓶颈，想知道未来三个月的发展方向……"></textarea>
-                <div class="question-hint">✨ 问题写得越具体，解读就越贴合你的情况</div>
-                <div class="question-actions">
-                    <button class="btn-secondary question-btn-cancel" onclick="closeQuestionModal()">返回</button>
-                    <button class="btn-primary question-btn-confirm" onclick="confirmQuestion()">✦ 确认并抽牌 ✦</button>
-                </div>
-            </div>
-       </div>
-       <!-- Step 2: Card Drawing -->
-        <!-- Step 2: Card Browse -->
-        <section id="step-browse" class="step">
-            <div class="section-inner">
-                <h2 class="step-title">✦ 滑动选牌 ✦</h2>
-                <p class="step-desc" id="browse-desc">在牌阵中滑动浏览，心诚则灵，然后点击抽牌</p>
-                <div class="card-browse-wrapper">
-                    <div class="card-browse-track" id="card-browse-track">
-                    </div>
-                    <div class="browse-fade-left"></div>
-                    <div class="browse-fade-right"></div>
-                </div>
-                <div class="browse-info">
-                    <span>共 <strong id="browse-total">78</strong> 张牌</span>
-                    <span class="browse-dot" id="browse-dot"></span>
-                </div>
-                <button class="btn-primary" id="btn-browse-draw">
-                    <span class="btn-text">✦ 点击牌面选牌 ✦</span>
-                </button>
-            </div>
-        </section>
-
-       <!-- Step 2: Card Drawing -->
-        <section id="step-draw" class="step">
-            <div class="section-inner">
-                <h2 class="step-title">抽取三张塔罗牌</h2>
-                <p class="step-desc" id="draw-desc">请集中精神，默念你的问题，然后点击抽牌</p>
-                <div class="card-table" id="card-table">
-                    <div class="card-slot" id="slot-0">
-                        <div class="card-inner">
-                            <div class="card-back">
-                                <div class="back-pattern"></div>
-                            </div>
-                            <div class="card-front">
-                                <img class="card-img" src="" alt="">
-                                <div class="card-suit"></div>
-                                <div class="card-number"></div>
-                                <div class="card-name"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-slot" id="slot-1">
-                        <div class="card-inner">
-                            <div class="card-back">
-                                <div class="back-pattern"></div>
-                            </div>
-                            <div class="card-front">
-                                <img class="card-img" src="" alt="">
-                                <div class="card-suit"></div>
-                                <div class="card-number"></div>
-                                <div class="card-name"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-slot" id="slot-2">
-                        <div class="card-inner">
-                            <div class="card-back">
-                                <div class="back-pattern"></div>
-                            </div>
-                            <div class="card-front">
-                                <img class="card-img" src="" alt="">
-                                <div class="card-suit"></div>
-                                <div class="card-number"></div>
-                                <div class="card-name"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <button class="btn-primary" id="btn-draw" onclick="drawCards()">
-                    <span class="btn-text">✦ 抽三张牌 ✦</span>
-                </button>
-            </div>
-        </section>
-
-        <!-- Pricing Modal -->
-<div id="pricing-overlay" class="modal-overlay" style="display:none;">
-    <div class="modal-backdrop" onclick="closePricingModal()"></div>
-    <div class="modal-content" style="max-width:420px;">
-        <button class="modal-close" onclick="closePricingModal()">&times;</button>
-        <div style="font-size:2.5em;margin-bottom:10px;">🔮</div>
-        <h2 style="color:#d4a843;margin-bottom:6px;font-size:1.2em;">选择占卜套餐</h2>
-        <p style="color:#a090b0;font-size:0.85em;margin-bottom:20px;">购买后不限时间，按次扣减</p>
-        <div id="pricing-options" style="display:flex;gap:12px;margin-bottom:20px;">
-            <div onclick="startCheckout('2_readings')" style="flex:1;background:rgba(212,168,67,0.08);border:1.5px solid #d4a843;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s;">
-                <div style="font-size:0.85em;color:#a090b0;margin-bottom:8px;">两次占卜</div>
-                <div style="font-size:1.8em;color:#d4a843;font-weight:bold;">&yen;14.99</div>
-                <div style="font-size:0.7em;color:#7a6a8a;margin-top:6px;">平均 &yen;7.50/次</div>
-                <div style="margin-top:12px;padding:8px 16px;background:#d4a843;border-radius:20px;color:#1a0a2e;font-size:0.8em;font-weight:bold;">选择</div>
-            </div>
-            <div onclick="startCheckout('3_readings')" style="flex:1;background:rgba(212,168,67,0.08);border:1.5px solid #d4a843;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s;position:relative;">
-                <div style="position:absolute;top:-8px;right:-8px;background:#d4a843;color:#1a0a2e;font-size:0.65em;padding:2px 8px;border-radius:8px;font-weight:bold;">推荐</div>
-                <div style="font-size:0.85em;color:#a090b0;margin-bottom:8px;">三次占卜</div>
-                <div style="font-size:1.8em;color:#d4a843;font-weight:bold;">&yen;19.99</div>
-                <div style="font-size:0.7em;color:#7a6a8a;margin-top:6px;">平均 &yen;6.66/次</div>
-                <div style="margin-top:12px;padding:8px 16px;background:#d4a843;border-radius:20px;color:#1a0a2e;font-size:0.8em;font-weight:bold;">选择</div>
-            </div>
-        </div>
-        <p style="font-size:0.7em;color:#6a5a7a;">支付由 Stripe 安全处理</p>
-        <div id="stripe-checkout" style="display:none;"></div>
-    </div>
-</div>
-
-        <!-- Step 3: Payment Modal -->
-        <div id="payment-overlay" class="modal-overlay" style="display:none;">
-            <div class="modal-backdrop" onclick="closePaymentModal()"></div>
-            <div class="modal-content pay-modal">
-                <button class="modal-close" onclick="closePaymentModal()">&times;</button>
-                <div class="pay-icon">🔮</div>
-                <h2 class="pay-title">解锁你的塔罗解读</h2>
-                <p class="pay-desc">三张牌已就位，牌灵深度解读即刻开启</p>
-                <div class="pay-price">
-                    <span class="price-symbol">$</span>
-                    <span class="price-amount">9.99</span>
-                </div>
-                <!-- Preview area: shows AI analysis while waiting -->
-                <div id="pay-reading-preview" class="pay-preview" style="display:none">
-                    <div class="pay-preview-loading">
-                        <span class="dot-pulse"></span>
-                        <span>星灵正在为你解读牌意...</span>
-                    </div>
-                </div>
-                <div class="pay-methods">
-                    <div class="pay-method">
-                        <span class="method-icon">💳</span>
-                        <span>支付宝</span>
-                    </div>
-                    <div class="pay-method">
-                        <span class="method-icon">💚</span>
-                        <span>微信支付</span>
-                    </div>
-                </div>
-                <button class="btn-pay" id="btn-pay" onclick="processPayment()">
-                    <span id="pay-btn-text">✨ 确认支付 $9.99</span>
-                    <span id="pay-btn-loading" class="loading-spinner" style="display:none;"></span>
-                </button>
-                <p class="pay-note">安全支付 · 加密传输</p>
-            </div>
-        </div>
-
-        <!-- Step 4: Reading Result -->
-        <section id="step-result" class="step">
-            <div class="section-inner">
-                <h2 class="step-title">✨ 你的塔罗解读 ✨</h2>
-                
-                <div class="revealed-cards" id="revealed-cards">
-                    <div class="reveal-card" id="reveal-0">
-                        <div class="reveal-card-inner">
-                            <div class="reveal-label">牌 一</div>
-                        </div>
-                    </div>
-                    <div class="reveal-card" id="reveal-1">
-                        <div class="reveal-card-inner">
-                            <div class="reveal-label">牌 二</div>
-                        </div>
-                    </div>
-                    <div class="reveal-card" id="reveal-2">
-                        <div class="reveal-card-inner">
-                            <div class="reveal-label">牌 三</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="reading-section" id="reading-section">
-                    <div class="reading-header">
-                        <h3>🔮 牌灵深度解读</h3>
-                        <span class="reading-category" id="reading-category"></span>
-                    </div>
-                    <div class="reading-content" id="reading-content">
-                        <div class="reading-placeholder">
-                            <div class="reading-loading">
-                                <span class="dot-pulse"></span>
-                                <span>星灵正在解读牌意...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="restart-section" id="restart-section" style="display:none;">
-                    <button class="btn-secondary" onclick="restartReading()">
-                        ✦ 进行新的占卜 ✦
-                    </button>
-                </div>
-            </div>
-        </section>
-    </div>
-
-                <script src="/static/script.js?v=99" charset="UTF-8"></script>
-</body>
-</html>
-
-
+﻿<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>星语塔罗 — 神秘塔罗占卜</title>
+
+                <link rel="stylesheet" href="/static/style.css?v=99">
+
+</head>
+
+<body>
+
+    <div id="app">
+
+        <header class="hero">
+
+            <div class="stars-bg"></div>
+
+            <div class="hero-content">
+
+                <h1 class="title-glow">✦ 星语塔罗 ✦</h1>
+
+                <p class="subtitle">倾听宇宙的声音，指引你的未来</p>
+
+                <div id="remaining-badge" style="display:none;margin-top:10px;font-size:0.85em;color:#a090b0;letter-spacing:1px;">剩余 <span id="remaining-count" style="color:#d4a843;font-weight:bold;">0</span> 次占卜</div>
+
+            </div>
+
+        </header>
+
+
+
+        <!-- Step 1: Category Selection -->
+
+        <section id="step-category" class="step active">
+
+            <div class="section-inner">
+
+                <h2 class="step-title">选择你的占卜主题</h2>
+
+                <p class="step-desc">你心中最想探寻的方向是……</p>
+
+                <div class="category-grid">
+
+                    <button class="category-btn" data-category="fortune" onclick="selectCategory('fortune')">
+
+                        <span class="cat-icon">✦</span>
+
+                        <span class="cat-name">短期运程</span>
+
+                        <span class="cat-sub">近日运势指引</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="love" onclick="selectCategory('love')">
+
+                        <span class="cat-icon">♥</span>
+
+                        <span class="cat-name">爱情趋势</span>
+
+                        <span class="cat-sub">情感走向洞察</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="career" onclick="selectCategory('career')">
+
+                        <span class="cat-icon">▲</span>
+
+                        <span class="cat-name">事业</span>
+
+                        <span class="cat-sub">职场发展指引</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="friendship" onclick="selectCategory('friendship')">
+
+                        <span class="cat-icon">◆</span>
+
+                        <span class="cat-name">友情</span>
+
+                        <span class="cat-sub">人际缘分解读</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="family" onclick="selectCategory('family')">
+
+                        <span class="cat-icon">☽</span>
+
+                        <span class="cat-name">家庭关系</span>
+
+                        <span class="cat-sub">家人和谐之道</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="daily" onclick="selectCategory('daily')">
+
+                        <span class="cat-icon">☀</span>
+
+                        <span class="cat-name">今日运程</span>
+
+                        <span class="cat-sub">一日运势指引</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="exam" onclick="selectCategory('exam')">
+
+                        <span class="cat-icon">✎</span>
+
+                        <span class="cat-name">考试运势</span>
+
+                        <span class="cat-sub">学业考试洞察</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="health" onclick="selectCategory('health')">
+
+                        <span class="cat-icon">✚</span>
+
+                        <span class="cat-name">健康状况</span>
+
+                        <span class="cat-sub">身心安康指南</span>
+
+                    </button>
+
+                    <button class="category-btn" data-category="other" onclick="selectCategory('other')">
+
+                        <span class="cat-icon">✦</span>
+
+                        <span class="cat-name">其他</span>
+
+                        <span class="cat-sub">其他领域问题</span>
+
+                    </button>
+
+               </div>
+
+            </div>
+
+       </section>
+
+        <!-- Question Dialog -->
+
+        <div id="question-overlay" class="modal-overlay" style="display:none;">
+
+            <div class="modal-backdrop" onclick="closeQuestionModal()"></div>
+
+            <div class="modal-content question-modal">
+
+                <button class="modal-close" onclick="closeQuestionModal()">&times;</button>
+
+                <div class="question-icon">🔮</div>
+
+                <h2 class="question-title">请写下你的具体问题</h2>
+
+                <p class="question-desc" id="question-desc">你将占卜「<span id="question-category-label"></span>」—— 把你心中所想写下来吧</p>
+
+                <textarea class="question-textarea" id="question-text" rows="5" placeholder="例如：我最近在工作上遇到了瓶颈，想知道未来三个月的发展方向……"></textarea>
+
+                <div class="question-hint">✨ 问题写得越具体，解读就越贴合你的情况</div>
+
+                <div class="question-actions">
+
+                    <button class="btn-secondary question-btn-cancel" onclick="closeQuestionModal()">返回</button>
+
+                    <button class="btn-primary question-btn-confirm" onclick="confirmQuestion()">✦ 确认并抽牌 ✦</button>
+
+                </div>
+
+            </div>
+
+       </div>
+
+       <!-- Step 2: Card Drawing -->
+
+        <!-- Step 2: Card Browse -->
+
+        <section id="step-browse" class="step">
+
+            <div class="section-inner">
+
+                <h2 class="step-title">✦ 滑动选牌 ✦</h2>
+
+                <p class="step-desc" id="browse-desc">在牌阵中滑动浏览，心诚则灵，然后点击抽牌</p>
+
+                <div class="card-browse-wrapper">
+
+                    <div class="card-browse-track" id="card-browse-track">
+
+                    </div>
+
+                    <div class="browse-fade-left"></div>
+
+                    <div class="browse-fade-right"></div>
+
+                </div>
+
+                <div class="browse-info">
+
+                    <span>共 <strong id="browse-total">78</strong> 张牌</span>
+
+                    <span class="browse-dot" id="browse-dot"></span>
+
+                </div>
+
+                <button class="btn-primary" id="btn-browse-draw">
+
+                    <span class="btn-text">✦ 点击牌面选牌 ✦</span>
+
+                </button>
+
+            </div>
+
+        </section>
+
+
+
+       <!-- Step 2: Card Drawing -->
+
+        <section id="step-draw" class="step">
+
+            <div class="section-inner">
+
+                <h2 class="step-title">抽取三张塔罗牌</h2>
+
+                <p class="step-desc" id="draw-desc">请集中精神，默念你的问题，然后点击抽牌</p>
+
+                <div class="card-table" id="card-table">
+
+                    <div class="card-slot" id="slot-0">
+
+                        <div class="card-inner">
+
+                            <div class="card-back">
+
+                                <div class="back-pattern"></div>
+
+                            </div>
+
+                            <div class="card-front">
+
+                                <img class="card-img" src="" alt="">
+
+                                <div class="card-suit"></div>
+
+                                <div class="card-number"></div>
+
+                                <div class="card-name"></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="card-slot" id="slot-1">
+
+                        <div class="card-inner">
+
+                            <div class="card-back">
+
+                                <div class="back-pattern"></div>
+
+                            </div>
+
+                            <div class="card-front">
+
+                                <img class="card-img" src="" alt="">
+
+                                <div class="card-suit"></div>
+
+                                <div class="card-number"></div>
+
+                                <div class="card-name"></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="card-slot" id="slot-2">
+
+                        <div class="card-inner">
+
+                            <div class="card-back">
+
+                                <div class="back-pattern"></div>
+
+                            </div>
+
+                            <div class="card-front">
+
+                                <img class="card-img" src="" alt="">
+
+                                <div class="card-suit"></div>
+
+                                <div class="card-number"></div>
+
+                                <div class="card-name"></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <button class="btn-primary" id="btn-draw" onclick="drawCards()">
+
+                    <span class="btn-text">✦ 抽三张牌 ✦</span>
+
+                </button>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- Pricing Modal -->
+<div id="pricing-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal-backdrop" onclick="closePricingModal()"></div>
+    <div class="modal-content" style="max-width:420px;">
+        <button class="modal-close" onclick="closePricingModal()">&times;</button>
+        <div style="font-size:2.5em;margin-bottom:10px;">🔮</div>
+        <h2 style="color:#d4a843;margin-bottom:6px;font-size:1.2em;">选择占卜套餐</h2>
+        <p style="color:#a090b0;font-size:0.85em;margin-bottom:6px;">购买后不限时间，按次扣减</p>
+        <div id="pricing-options" style="display:flex;gap:12px;margin-bottom:20px;">
+            <div onclick="showPaymentQr('2_readings')" style="flex:1;background:rgba(212,168,67,0.08);border:1.5px solid #d4a843;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s;">
+                <div style="font-size:0.85em;color:#a090b0;margin-bottom:8px;">两次占卜</div>
+                <div style="font-size:1.8em;color:#d4a843;font-weight:bold;">&yen;14.99</div>
+                <div style="font-size:0.7em;color:#7a6a8a;margin-top:6px;">平均 &yen;7.50/次</div>
+                <div style="margin-top:12px;padding:8px 16px;background:#d4a843;border-radius:20px;color:#1a0a2e;font-size:0.8em;font-weight:bold;">选择</div>
+            </div>
+            <div onclick="showPaymentQr('3_readings')" style="flex:1;background:rgba(212,168,67,0.08);border:1.5px solid #d4a843;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all 0.3s;position:relative;">
+                <div style="position:absolute;top:-8px;right:-8px;background:#d4a843;color:#1a0a2e;font-size:0.65em;padding:2px 8px;border-radius:8px;font-weight:bold;">推荐</div>
+                <div style="font-size:0.85em;color:#a090b0;margin-bottom:8px;">三次占卜</div>
+                <div style="font-size:1.8em;color:#d4a843;font-weight:bold;">&yen;19.99</div>
+                <div style="font-size:0.7em;color:#7a6a8a;margin-top:6px;">平均 &yen;6.66/次</div>
+                <div style="margin-top:12px;padding:8px 16px;background:#d4a843;border-radius:20px;color:#1a0a2e;font-size:0.8em;font-weight:bold;">选择</div>
+            </div>
+        </div>
+        <div id="payment-qr-area" style="display:none;text-align:center;padding:10px 0;">
+            <p style="color:#a090b0;font-size:0.85em;margin-bottom:12px;">请用支付宝或微信扫描下方二维码付款</p>
+            <div id="payment-qr-code" style="margin:0 auto 15px;max-width:220px;aspect-ratio:1;background:rgba(255,255,255,0.05);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(212,168,67,0.2);">
+                <span style="color:#6a5a7a;font-size:0.8em;">请上传收款码</span>
+            </div>
+            <p style="color:#d4a843;font-size:1.1em;font-weight:bold;margin-bottom:4px;" id="payment-qr-amount">¥14.99</p>
+            <p style="color:#7a6a8a;font-size:0.8em;margin-bottom:15px;" id="payment-qr-plan">两次占卜</p>
+            <button onclick="confirmTrustPayment()" style="background:#d4a843;color:#1a0a2e;border:none;padding:14px 40px;border-radius:25px;font-size:1.05em;font-weight:bold;cursor:pointer;font-family:inherit;">我已付款，立即解锁</button>
+            <p style="color:#6a5a7a;font-size:0.7em;margin-top:10px;">先信任你，付款后请点击确认，次数立刻到账</p>
+            <p style="color:#6a5a7a;font-size:0.7em;">店主会定期核对账单，虚假付款将被禁止使用</p>
+            <div id="trust-result" style="margin-top:10px;font-size:0.85em;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Step 3: Payment (in pricing modal) -->
+<div id="payment-overlay" style="display:none;"></div>
+
+        <!-- Step 4: Reading Result -->
+
+        <section id="step-result" class="step">
+
+            <div class="section-inner">
+
+                <h2 class="step-title">✨ 你的塔罗解读 ✨</h2>
+
+                
+
+                <div class="revealed-cards" id="revealed-cards">
+
+                    <div class="reveal-card" id="reveal-0">
+
+                        <div class="reveal-card-inner">
+
+                            <div class="reveal-label">牌 一</div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="reveal-card" id="reveal-1">
+
+                        <div class="reveal-card-inner">
+
+                            <div class="reveal-label">牌 二</div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="reveal-card" id="reveal-2">
+
+                        <div class="reveal-card-inner">
+
+                            <div class="reveal-label">牌 三</div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="reading-section" id="reading-section">
+
+                    <div class="reading-header">
+
+                        <h3>🔮 牌灵深度解读</h3>
+
+                        <span class="reading-category" id="reading-category"></span>
+
+                    </div>
+
+                    <div class="reading-content" id="reading-content">
+
+                        <div class="reading-placeholder">
+
+                            <div class="reading-loading">
+
+                                <span class="dot-pulse"></span>
+
+                                <span>星灵正在解读牌意...</span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="restart-section" id="restart-section" style="display:none;">
+
+                    <button class="btn-secondary" onclick="restartReading()">
+
+                        ✦ 进行新的占卜 ✦
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+
+
+                <script src="/static/script.js?v=99" charset="UTF-8"></script>
+
+</body>
+
+</html>
+
+
+
+
+
