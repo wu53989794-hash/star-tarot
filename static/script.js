@@ -963,6 +963,7 @@ function closePricingModal() {
 
 
     document.getElementById("pricing-overlay").style.display = "none";
+    document.getElementById("payment-overlay").style.display = "none";
 
     document.body.style.overflow = "";
 
@@ -1059,7 +1060,9 @@ function showPaymentQr(plan) {
     var names = {"2_readings":"\u4e24\u6b21\u5360\u535c","3_readings":"\u4e09\u6b21\u5360\u535c"};
     var amounts = {"2_readings":"\u00a514.99","3_readings":"\u00a519.99"};
     document.getElementById("pricing-options").style.display = "none";
-    document.getElementById("payment-qr-area").style.display = "block";
+    document.getElementById("pricing-overlay").style.display = "none";
+    document.getElementById("payment-overlay").style.display = "none";
+    document.getElementById("payment-overlay").style.display = "flex";
     document.getElementById("payment-qr-plan").textContent = names[plan] || plan;
     document.getElementById("payment-qr-amount").textContent = amounts[plan] || "";
     document.getElementById("qr-alipay-container").style.display = (plan === "2_readings" ? "" : "none");
@@ -1142,6 +1145,7 @@ function confirmTrustPayment() {
 
             updateRemainingBadge();
 
+            document.getElementById("payment-overlay").style.display = "none";
             closePricingModal();
 
             btn.disabled = false;
@@ -1992,4 +1996,10 @@ function shuffleCards() {
     });
     var container = document.getElementById("revealed-cards");
     if (container) container.innerHTML = html;
+}
+
+
+function closePaymentModal() {
+    document.getElementById("payment-overlay").style.display = "none";
+    document.body.style.overflow = "";
 }
