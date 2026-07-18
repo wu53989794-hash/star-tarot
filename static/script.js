@@ -1011,7 +1011,7 @@ function useReading() {
 
 
 
-    .then(function(r){return r.json()}).then(function(d){if(d.success){state.remaining=d.remaining;updateRemainingBadge();}});
+    .then(function(r){return r.json()}).then(function(d){if(d.success) _selectedTrustPlan = "";{state.remaining=d.remaining;updateRemainingBadge();}});
 
 
 
