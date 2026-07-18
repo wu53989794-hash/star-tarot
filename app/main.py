@@ -466,11 +466,7 @@ async def admin_verify_csv_bulk(req: UploadCsvRequest):
     return {"success": True, **result}
 
 
-# ===== WSGI entry point for PythonAnywhere =====
-
-from a2wsgi import ASGIMiddleware
-
-application = ASGIMiddleware(app)
+# For ASGI mode, use asgi.py instead
 
 
 
