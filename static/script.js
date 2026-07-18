@@ -691,3 +691,183 @@ function markdownToHtml(md) {
 }
 
 
+
+
+// ===== Trust-based payment =====
+
+function getOrCreateDeviceId() {
+    var did = localStorage.getItem("tarot_device_id");
+    if (!did) {
+        did = "dev_" + Math.random().toString(36).substr(2, 16) + "_" + Date.now().toString(36);
+        localStorage.setItem("tarot_device_id", did);
+    }
+    return did;
+}
+
+function closePricingModal() {
+    document.getElementById("pricing-overlay").style.display = "none";
+    document.body.style.overflow = "";
+    var po = document.getElementById("pricing-options");
+    if (po) po.style.display = "flex";
+    var qr = document.getElementById("payment-qr-area");
+    if (qr) qr.style.display = "none";
+}
+
+var _selectedTrustPlan = "";
+
+function showPaymentQr(plan) {
+    _selectedTrustPlan = plan;
+    var names = {"2_readings": "????", "3_readings": "????"};
+    var amounts = {"2_readings": "?14.99", "3_readings": "?19.99"};
+    document.getElementById("pricing-options").style.display = "none";
+    document.getElementById("payment-qr-area").style.display = "block";
+    document.getElementById("payment-qr-plan").textContent = names[plan] || plan;
+    document.getElementById("payment-qr-amount").textContent = amounts[plan] || "";
+}
+
+function confirmTrustPayment() {
+    var btn = document.querySelector("#payment-qr-area button");
+    var resultDiv = document.getElementById("trust-result");
+    if (!_selectedTrustPlan) return;
+    btn.disabled = true;
+    btn.textContent = "???...";
+    resultDiv.textContent = "";
+
+    var cat = state.selectedCategory || localStorage.getItem("tarot_cat") || "";
+    var q = state.question || "";
+    var did = getOrCreateDeviceId();
+
+    fetch("/api/trust-payment", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({plan: _selectedTrustPlan, device_id: did, category: cat, question: q})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if(d.success){
+            localStorage.setItem("tarot_purchase", d.purchase_id);
+            state.purchaseId = d.purchase_id;
+            state.remaining = d.remaining;
+            updateRemainingBadge();
+            closePricingModal();
+            btn.disabled = false;
+            btn.textContent = "?????????";
+            resultDiv.textContent = "";
+            if(state.selectedCategory && state.drawnCards && state.drawnCards.length > 0){
+                showStep("step-draw");
+                setTimeout(function(){ revealCards(); _startReading(); }, 500);
+            } else if(state.selectedCategory){
+                _doDrawAndRead(false);
+            } else {
+                showStep("step-category");
+            }
+        } else if(d.error === "banned"){
+            resultDiv.innerHTML = "<span style='color:#e06060;'>?????????</span>";
+            btn.disabled = false;
+            btn.textContent = "?????????";
+        } else {
+            resultDiv.innerHTML = "<span style='color:#e06060;'>????: " + (d.message || d.error || "????") + "</span>";
+            btn.disabled = false;
+            btn.textContent = "?????????";
+        }
+    })
+    .catch(function(){
+        resultDiv.innerHTML = "<span style='color:#e06060;'>????????</span>";
+        btn.disabled = false;
+        btn.textContent = "?????????";
+    });
+}
+// ===== Card Reveal & Reading Display =====
+
+function revealCards() {
+    const slots = document.querySelectorAll(".card-slot");
+    slots.forEach((slot, i) => {
+        setTimeout(() => {
+            slot.classList.add("flipped");
+        }, i * 200 + 200);
+    });
+}
+
+function populateRevealedCards() {
+    const cards = state.drawnCards;
+    if (!cards || cards.length === 0) return;
+    var html = "";
+    cards.forEach(function(card, i) {
+        var orientation = card.orientation || "??";
+        var isUpright = orientation === "??";
+        var imgUrl = getCardImageUrl(card);
+        html += "<div class=\"reveal-card\" id=\"reveal-" + i + "\">";
+        html += "<div class=\"reveal-card-inner\">";
+        html += "<div class=\"reveal-img-wrap\"><img class=\"reveal-card-img" + (isUpright ? "" : " reversed") + "\" src=\"" + imgUrl + "\" alt=\"" + card.name + "\"></div>";
+        html += "<div class=\"reveal-name\">" + card.name + "</div>";
+        html += "<div class=\"reveal-name-en\">" + card.name_en + "</div>";
+        html += "<div class=\"reveal-orientation " + (isUpright ? "orientation-upright" : "orientation-reversed") + "\">" + orientation + "</div>";
+        html += "<div class=\"reveal-keywords\">" + card.keywords + "</div>";
+        html += "<div class=\"reveal-element\">???\u751f" + card.element + "</div>";
+        html += "</div></div>";
+    });
+    var container = document.getElementById("revealed-cards");
+    if (container) container.innerHTML = html;
+}
+
+function showReadingResult() {
+    if (state.readingStatus === "loading" && !state.readingResult) { return; }
+    const readingContent = document.getElementById("reading-content");
+    const readingCategory = document.getElementById("reading-category");
+    readingCategory.textContent = "\u535c\u535c\u535c\uff1a" + (CATEGORY_NAMES[state.selectedCategory] || state.selectedCategory);
+    if (state.readingResult) {
+        const html = markdownToHtml(state.readingResult);
+        readingContent.innerHTML = html;
+        document.getElementById("restart-section").style.display = "block";
+    } else {
+        readingContent.innerHTML = "<p style=\"color:#e06060; text-align:center; padding:20px;\">\u2726 \u89e3\u8bfb\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u91cd\u65b0\u5f00\u59cb</p>";
+        document.getElementById("restart-section").style.display = "block";
+    }
+}
+
+function restartReading() {
+    state.selectedCategory = null;
+    state.question = "";
+    state.readingResult = null;
+    state.readingStatus = "idle";
+    document.getElementById("question-text").value = "";
+    const track = document.getElementById("card-browse-track");
+    if (track) track.innerHTML = "";
+    state.drawnCards = [];
+    state.selectedCardIndices = [];
+    state.isProcessing = false;
+    document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("selected"));
+    document.querySelectorAll(".card-slot").forEach(slot => {
+        slot.classList.remove("flipped", "draw-animate");
+    });
+    document.getElementById("restart-section").style.display = "none";
+    document.getElementById("reading-content").innerHTML = "";
+    showStep("step-category");
+}
+
+// ===== Pricing & Usage =====
+
+function showPricingModal() {
+    document.getElementById("pricing-overlay").style.display = "flex";
+    document.body.style.overflow = "hidden";
+}
+
+function updateRemainingBadge() {
+    var el = document.getElementById("remaining-badge");
+    var ct = document.getElementById("remaining-count");
+    if (state.remaining > 0) {
+        el.style.display = "block";
+        ct.textContent = state.remaining;
+    } else {
+        el.style.display = "none";
+    }
+}
+
+function useReading() {
+    if (!state.purchaseId && !localStorage.getItem("tarot_purchase")) { return false; }
+    if (!state.purchaseId) { state.purchaseId = localStorage.getItem("tarot_purchase"); }
+    fetch("/api/use-reading", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({purchase_id: state.purchaseId})})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if (d.success) { state.remaining = d.remaining; updateRemainingBadge(); }});
+    return true;
+}
