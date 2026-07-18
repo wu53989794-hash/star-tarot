@@ -1,5 +1,6 @@
 import secrets, random, json, os, logging
 _sysrand = secrets.SystemRandom()
+_drawn_ids = set()  # 追踪已抽過的牌
 from pathlib import Path
 from flask import Flask, request, jsonify, Response, send_from_directory
 from app.cards import ALL_CARDS
@@ -36,7 +37,13 @@ def draw_cards():
     import sys as _sys
     _sys.stderr.write("DRAW_FUNC: CALLED\n")
     _sys.stderr.flush()
-    drawn = _sysrand.sample(ALL_CARDS, 3)
+    available = [c for c in ALL_CARDS if c["id"] not in _drawn_ids]
+    if len(available) < 3:
+        _drawn_ids.clear()
+        available = list(ALL_CARDS)
+    drawn = _sysrand.sample(available, 3)
+    for c in drawn:
+        _drawn_ids.add(c["id"])
     _sysrand.shuffle(drawn)
     result = [dict(c) | {"orientation": _sysrand.choice(["正位", "逆位"])} for c in drawn]
     logger.info("Draw: %s", [c["id"] for c in result])
