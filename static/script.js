@@ -1679,21 +1679,11 @@ function _doDrawAndRead(useUserCards) {
 
 
 
-    var fetchBody = JSON.stringify({ count: 3 })
-
-
-
     fetch("/api/draw", {
-
         method: "POST",
-
-        headers: { "Content-Type": "application/json" },
-
-        body: fetchBody
-
-    })
-
-    .then(function(r) { return r.json(); })
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ count: 3 })
+    }).then(function(r) { return r.json(); })
 
     .then(function(data) {
 

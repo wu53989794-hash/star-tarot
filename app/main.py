@@ -33,10 +33,7 @@ def health():
     return jsonify({"status": "ok", "cards_count": len(ALL_CARDS)})
 @app.route("/api/draw", methods=["POST"])
 def draw_cards():
-    data = request.get_json() or {}
-    count = min(data.get("count", 3), 3)
-    card_ids = data.get("card_ids")
-    drawn = [c for c in ALL_CARDS if c["id"] in card_ids] if card_ids else _sysrand.sample(ALL_CARDS, count)
+    drawn = _sysrand.sample(ALL_CARDS, 3)
     _sysrand.shuffle(drawn)
     result = [dict(c) | {"orientation": _sysrand.choice(["正位", "逆位"])} for c in drawn]
     logger.info("Draw: %s", [c["id"] for c in result])
