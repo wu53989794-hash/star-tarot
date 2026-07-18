@@ -1,4 +1,5 @@
 import secrets, random, json, os, logging
+_sysrand = secrets.SystemRandom()
 from pathlib import Path
 from flask import Flask, request, jsonify, Response, send_from_directory
 from app.cards import ALL_CARDS
@@ -35,9 +36,9 @@ def draw_cards():
     data = request.get_json() or {}
     count = min(data.get("count", 3), 3)
     card_ids = data.get("card_ids")
-    drawn = [c for c in ALL_CARDS if c["id"] in card_ids] if card_ids else secrets.SystemRandom().sample(ALL_CARDS, count)
-    secrets.SystemRandom().shuffle(drawn)
-    result = [dict(c) | {"orientation": secrets.SystemRandom().choice(["正位", "逆位"])} for c in drawn]
+    drawn = [c for c in ALL_CARDS if c["id"] in card_ids] if card_ids else _sysrand.sample(ALL_CARDS, count)
+    _sysrand.shuffle(drawn)
+    result = [dict(c) | {"orientation": _sysrand.choice(["正位", "逆位"])} for c in drawn]
     logger.info("Draw: %s", [c["id"] for c in result])
     resp = jsonify({"cards": result})
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
