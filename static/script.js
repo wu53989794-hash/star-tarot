@@ -1309,37 +1309,12 @@ function closeQuestionModal() {
 
 
 function confirmQuestion() {
-
-
-
     const question = document.getElementById("question-text").value.trim();
-
-
-
     state.question = question || "";
-
-
-
     closeQuestionModal();
-
-
-
     showStep("step-browse");
-
-
-
-    document.getElementById("browse-desc").textContent =
-
-
-
-        "占卜：" + CATEGORY_NAMES[state.selectedCategory] + " —— 滑动浏览，然后抽牌";
-
-
-
+    document.getElementById("browse-desc").textContent = "占卜：" + CATEGORY_NAMES[state.selectedCategory] + " —— 滑动浏览，然后抽牌";
     loadBrowseCards();
-
-
-
 }
 
 
@@ -1696,11 +1671,7 @@ function _doDrawAndRead(useUserCards) {
 
 
 
-    var fetchBody = useUserCards
-
-        ? JSON.stringify({ count: 3, card_ids: state.selectedCardIndices })
-
-        : JSON.stringify({ count: 3 });
+    var fetchBody = JSON.stringify({ count: 3 })
 
 
 
@@ -1983,4 +1954,27 @@ function showPayButton() {
     if (b) b.style.display = "inline-block";
     var h = document.getElementById("payment-save-status");
     if (h) h.innerHTML = "<span style='color:#8c8;font-size:0.8em;'>done</span>";
+}
+
+
+// ????????????
+function randomDraw() {
+    if (state.isProcessing) return;
+    if (state.remaining > 0 || localStorage.getItem("tarot_purchase")) {
+        // Check remaining first
+        var pid = localStorage.getItem("tarot_purchase");
+        fetch("/api/check-usage", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({purchase_id:pid})})
+        .then(function(r){return r.json()}).then(function(d){
+            state.remaining = d.remaining;
+            state.purchaseId = pid;
+            updateRemainingBadge();
+            if (d.remaining > 0) {
+                _doDrawAndRead(false);
+            } else {
+                showPricingModal();
+            }
+        });
+    } else {
+        showPricingModal();
+    }
 }
