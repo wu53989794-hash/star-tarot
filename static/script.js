@@ -1407,7 +1407,7 @@ async function loadBrowseCards() {
 
 
 
-            div.style.animationDelay = (i * 15) + "ms";
+            // div.style.animationDelay = (i * 15) + "ms";
 
 
 

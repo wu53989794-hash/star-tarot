@@ -248,11 +248,13 @@ body {
     flex: 0 0 auto;
     width: 100px;
     height: 160px;
+    position: relative;
     border-radius: 8px;
     border: 2px solid rgba(212,168,67,0.2);
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     overflow: hidden;
     animation: browseCardIn 0.5s ease-out backwards;
+    animation-duration: 0.2s;
     transition: transform 0.3s, box-shadow 0.3s;
 }
 .browse-card:hover {
