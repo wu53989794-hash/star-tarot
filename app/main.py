@@ -38,7 +38,9 @@ def draw_cards():
     drawn = [c for c in ALL_CARDS if c["id"] in card_ids] if card_ids else secrets.SystemRandom().sample(ALL_CARDS, count)
     secrets.SystemRandom().shuffle(drawn)
     result = [dict(c) | {"orientation": secrets.SystemRandom().choice(["正位", "逆位"])} for c in drawn]
-    return jsonify({"cards": result})
+    resp = jsonify({"cards": result})
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
 @app.route("/api/reading", methods=["POST"])
 def reading():
     d = request.get_json() or {}

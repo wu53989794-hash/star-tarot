@@ -354,7 +354,7 @@ async function drawCards() {
 
 
 
-                    if (img) { img.src = getCardImageUrl(card); if (card.orientation === '逆位') img.classList.add('reversed'); }
+                    if (img) { img.src = getCardImageUrl(card); img.classList.remove('reversed'); img.classList.remove('reversed'); if (card.orientation === '逆位') img.classList.add('reversed'); }
 
 
 
@@ -1715,7 +1715,7 @@ function _doDrawAndRead(useUserCards) {
 
                         img.src = getCardImageUrl(card);
 
-                        if (card.orientation === '逆位') img.classList.add('reversed');
+                        img.classList.remove('reversed'); img.classList.remove('reversed'); if (card.orientation === '逆位') img.classList.add('reversed');
 
                     }
 
