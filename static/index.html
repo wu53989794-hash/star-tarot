@@ -349,8 +349,19 @@
         </div>
         <div id="payment-qr-area" style="display:none;text-align:center;padding:10px 0;">
             <p style="color:#a090b0;font-size:0.85em;margin-bottom:12px;">请用支付宝或微信扫描下方二维码付款</p>
-            <div id="payment-qr-code" style="margin:0 auto 15px;max-width:220px;aspect-ratio:1;background:rgba(255,255,255,0.05);border-radius:12px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(212,168,67,0.2);">
-                <span style="color:#6a5a7a;font-size:0.8em;">请上传收款码</span>
+            <div style="display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-bottom:15px;">
+                <div style="text-align:center;">
+                    <img src="/static/qr-alipay.jpg" style="width:140px;height:140px;border-radius:10px;border:2px solid rgba(212,168,67,0.3);object-fit:cover;">
+                    <div style="color:#a090b0;font-size:0.75em;margin-top:4px;">支付宝</div>
+                </div>
+                <div style="text-align:center;">
+                    <img src="/static/qr-wechat.jpg" style="width:140px;height:140px;border-radius:10px;border:2px solid rgba(212,168,67,0.3);object-fit:cover;">
+                    <div style="color:#a090b0;font-size:0.75em;margin-top:4px;">微信</div>
+                </div>
+                <div style="text-align:center;">
+                    <img src="/static/qr-wechat2.jpg" style="width:140px;height:140px;border-radius:10px;border:2px solid rgba(212,168,67,0.3);object-fit:cover;">
+                    <div style="color:#a090b0;font-size:0.75em;margin-top:4px;">微信</div>
+                </div>
             </div>
             <p style="color:#d4a843;font-size:1.1em;font-weight:bold;margin-bottom:4px;" id="payment-qr-amount">¥14.99</p>
             <p style="color:#7a6a8a;font-size:0.8em;margin-bottom:15px;" id="payment-qr-plan">两次占卜</p>
