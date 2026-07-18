@@ -1056,22 +1056,27 @@ var _selectedTrustPlan = "";
 
 function showPaymentQr(plan) {
     _selectedTrustPlan = plan;
-    var names = {"2_readings": "????", "3_readings": "????"};
-    var amounts = {"2_readings": "\u00a514.99", "3_readings": "\u00a519.99"};
+    var names = {"2_readings":"\u4e24\u6b21\u5360\u535c","3_readings":"\u4e09\u6b21\u5360\u535c"};
+    var amounts = {"2_readings":"\u00a514.99","3_readings":"\u00a519.99"};
     document.getElementById("pricing-options").style.display = "none";
     document.getElementById("payment-qr-area").style.display = "block";
     document.getElementById("payment-qr-plan").textContent = names[plan] || plan;
     document.getElementById("payment-qr-amount").textContent = amounts[plan] || "";
+    document.getElementById("qr-alipay-container").style.display = (plan === "2_readings" ? "" : "none");
+    document.getElementById("qr-wechat1-container").style.display = "";
+    document.getElementById("qr-wechat2-container").style.display = (plan === "3_readings" ? "" : "none");
     var payBtn = document.getElementById("btn-confirm-pay");
     if (payBtn) payBtn.style.display = "none";
-    var qrImgs = document.querySelectorAll("#payment-qr-area img");
+    var statusDiv = document.getElementById("payment-save-status");
+    if (statusDiv) statusDiv.innerHTML = "\u4fdd\u5b58\u4ed8\u6b3e\u7801\u6216\u8fd4\u56de\u9875\u9762\u540e\uff0c\u4ed8\u6b3e\u6309\u94ae\u5c06\u81ea\u52a8\u51fa\u73b0";
     var timer = null;
     function showPayBtn() {
         var b = document.getElementById("btn-confirm-pay");
         if (b) b.style.display = "inline-block";
-        var h = document.getElementById("payment-save-status");
-        if (h) h.innerHTML = "<span style='color:#8c8;font-size:0.8em;'>done</span>";
+        var s = document.getElementById("payment-save-status");
+        if (s) s.innerHTML = "\u2713 \u5df2\u68c0\u6d4b\u5230\u4fdd\u5b58\u64cd\u4f5c";
     }
+    var qrImgs = document.querySelectorAll("#payment-qr-area img");
     for (var i = 0; i < qrImgs.length; i++) {
         (function(img) {
             img.addEventListener("contextmenu", function(e) { showPayBtn(); });
@@ -1082,6 +1087,9 @@ function showPaymentQr(plan) {
             img.addEventListener("touchmove", function() { clearTimeout(timer); });
         })(qrImgs[i]);
     }
+    document.addEventListener("visibilitychange", function() {
+        if (document.visibilityState === "visible") { showPayBtn(); }
+    });
 }
 
 
