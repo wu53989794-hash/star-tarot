@@ -389,22 +389,21 @@ async def admin_verify_csv(req: Request):
     mark_csv_verified(device_id)
     return {"success": True}
 
-class ManualPaymentRequest(BaseModel):
-    plan: str
-    device_id: str = ""
-    category: str = ""
-    question: str = ""
-
 @app.post("/api/trust-payment")
-async def trust_payment(req: ManualPaymentRequest, request: Request):
-    plan_info = PLANS.get(req.plan)
+async def trust_payment(request: Request):
+    body = await request.json()
+    plan = body.get("plan", "")
+    device_id = body.get("device_id", "")
+    category = body.get("category", "")
+    question = body.get("question", "")
+    plan_info = PLANS.get(plan)
     if not plan_info:
         return JSONResponse({"error": "invalid plan"}, status_code=400)
     ip = request.client.host if request.client else ""
-    if is_banned(req.device_id, ip):
+    if is_banned(device_id, ip):
         return JSONResponse({"error": "banned", "message": "该设备已被禁止使用"}, status_code=403)
-    pid = manual_grant(req.plan, req.device_id, ip)
-    return {"success": True, "purchase_id": pid, "remaining": plan_info["readings"], "plan": req.plan, "readings": plan_info["readings"]}
+    pid = manual_grant(plan, device_id, ip)
+    return {"success": True, "purchase_id": pid, "remaining": plan_info["readings"], "plan": plan, "readings": plan_info["readings"]}
 
 # ===== WSGI entry point for PythonAnywhere =====
 from a2wsgi import ASGIMiddleware
