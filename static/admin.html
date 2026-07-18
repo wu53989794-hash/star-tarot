@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>星语塔罗 — 管理后台</title>
+<title>星语塔罗 · 管理后台</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:#0d0221;color:#e8dcc8;padding:30px 20px;}
 h1{color:#d4a843;text-align:center;margin-bottom:10px;font-size:1.6em;letter-spacing:2px;}
 h2{color:#d4a843;margin:20px 0 10px;font-size:1.2em;}
-.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:30px;}
+.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:30px;flex-wrap:wrap;}
 .tab{padding:10px 20px;background:rgba(42,26,78,0.5);border:1px solid rgba(212,168,67,0.2);border-radius:8px;color:#a090b0;cursor:pointer;}
 .tab.active{background:rgba(212,168,67,0.15);border-color:#d4a843;color:#d4a843;}
 .tab-content{display:none;}
 .tab-content.active{display:block;}
-.card{background:rgba(42,26,78,0.5);border:1px solid rgba(212,168,67,0.2);border-radius:12px;padding:24px;max-width:800px;margin:0 auto 20px;}
+.card{background:rgba(42,26,78,0.5);border:1px solid rgba(212,168,67,0.2);border-radius:12px;padding:24px;max-width:900px;margin:0 auto 20px;}
 table{width:100%;border-collapse:collapse;font-size:0.85em;}
 th,td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(212,168,67,0.1);}
 th{color:#d4a843;font-weight:normal;}
@@ -24,46 +24,79 @@ td{color:#c8b8d8;}
 .badge.verified{background:rgba(100,200,100,0.15);color:#8c8;}
 .badge.not-verified{background:rgba(200,100,100,0.15);color:#c88;}
 .badge.banned{background:rgba(200,50,50,0.2);color:#e44;}
+.badge.deducted{background:rgba(150,100,50,0.2);color:#ca8;}
 .empty{text-align:center;color:#6a5a7a;padding:30px;}
-.btn{display:inline-block;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:0.8em;font-family:inherit;}
+.btn{display:inline-block;padding:5px 12px;border:none;border-radius:6px;cursor:pointer;font-size:0.8em;font-family:inherit;margin:2px;}
 .btn-ban{background:#c44;color:#fff;}
 .btn-unban{background:#4a4;color:#fff;}
 .btn-verify{background:#d4a843;color:#1a0a2e;}
+.btn-deduct{background:#a08030;color:#fff;}
 .btn-grant{background:#d4a843;color:#1a0a2e;padding:12px 30px;font-size:1em;font-weight:bold;border:none;border-radius:8px;cursor:pointer;font-family:inherit;}
 select{padding:8px;background:#1a0a2e;color:#e8dcc8;border:1px solid rgba(212,168,67,0.3);border-radius:6px;margin-right:10px;font-family:inherit;}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#4a3a5a;color:#e8dcc8;padding:12px 24px;border-radius:8px;display:none;z-index:100;}
 .toast.show{display:block;}
-.grant-row{display:flex;align-items:center;gap:10px;margin-bottom:15px;}
+.grant-row{display:flex;align-items:center;gap:10px;margin-bottom:15px;flex-wrap:wrap;}
+.csv-upload-area{border:2px dashed rgba(212,168,67,0.3);border-radius:12px;padding:30px;text-align:center;margin:15px 0;}
+.csv-upload-area.dragover{border-color:#d4a843;background:rgba(212,168,67,0.05);}
+.csv-upload-area input[type=file]{display:none;}
+.csv-upload-label{display:inline-block;padding:12px 30px;background:#d4a843;color:#1a0a2e;border-radius:8px;cursor:pointer;font-weight:bold;}
+.csv-upload-label:hover{background:#e8c05a;}
+.csv-result{margin:10px 0;padding:10px;border-radius:8px;font-size:0.9em;}
+.csv-result.ok{background:rgba(100,200,100,0.1);border:1px solid rgba(100,200,100,0.3);color:#8c8;}
+.csv-result.warn{background:rgba(200,150,50,0.1);border:1px solid rgba(200,150,50,0.3);color:#da8;}
+.summary-cards{display:flex;gap:15px;margin-bottom:20px;flex-wrap:wrap;}
+.summary-card{flex:1;min-width:120px;background:rgba(42,26,78,0.5);border:1px solid rgba(212,168,67,0.15);border-radius:10px;padding:15px;text-align:center;}
+.summary-card .num{font-size:1.8em;color:#d4a843;font-weight:bold;}
+.summary-card .label{font-size:0.75em;color:#7a6a8a;margin-top:4px;}
+@media(max-width:640px){.summary-cards{flex-direction:column;}.card{padding:15px;}table{font-size:0.75em;}th,td{padding:6px 8px;}}
 </style>
 </head>
 <body>
-<h1>✦ 星语塔罗 · 管理后台 ✦</h1>
+
+<h1>★ 星语塔罗 · 管理后台 ★</h1>
 
 <div class="tabs">
 <div class="tab active" onclick="switchTab('devices')">设备管理</div>
-<div class="tab" onclick="switchTab("manual")">手动加次数</div>
+<div class="tab" onclick="switchTab('grant')">手动赠送</div>
 <div class="tab" onclick="switchTab('purchases')">购买记录</div>
 </div>
 
 <!-- Tab 1: Devices -->
 <div id="tab-devices" class="tab-content active">
 <div class="card">
-<h2>设备列表（信任制付款）</h2>
-<p style="color:#7a6a8a;font-size:0.8em;margin-bottom:15px;">CSV已验证 = 支付宝/微信账单已核对，没付钱的可以点"禁止"</p>
+<h2>设备列表</h2>
+<p style="color:#7a6a8a;font-size:0.8em;margin-bottom:15px;">
+   灰色 = 信任付款（未CSV核验） ｜ 绿色 = 已通过CSV核验 ｜ 红色 = 已封禁 ｜ 金色 = 已扣除次数
+</p>
+<div id="devices-summary" class="summary-cards"></div>
 <div id="devices-table"><p class="empty">加载中...</p></div>
+</div>
+
+<div class="card">
+<h2>CSV 上传核验</h2>
+<p style="color:#7a6a8a;font-size:0.8em;margin-bottom:10px;">
+   上传付款记录 CSV，系统会自动匹配设备并标记为"已验证"。
+   CSV 第一列应为 device_id（设备标识），第一行可以是表头。
+</p>
+<div class="csv-upload-area" id="csv-upload-area">
+   <p style="color:#a090b0;margin-bottom:15px;">📄 点击或拖放 CSV 文件到此处</p>
+   <label class="csv-upload-label" for="csv-file">选择 CSV 文件</label>
+   <input type="file" id="csv-file" accept=".csv" onchange="handleCsvUpload(event)">
+</div>
+<div id="csv-result"></div>
 </div>
 </div>
 
-<!-- Tab 2: Manual grant -->
-<div id="tab-manual" class="tab-content">
+<!-- Tab 2: Manual Grant -->
+<div id="tab-grant" class="tab-content">
 <div class="card">
-<h2>手动加占卜次数</h2>
+<h2>手动赠送次数</h2>
 <div class="grant-row">
 <select id="plan-select">
 <option value="2_readings">两次占卜 — ¥14.99</option>
 <option value="3_readings">三次占卜 — ¥19.99</option>
 </select>
-<button class="btn-grant" onclick="grantReading()">确认到账，手动加次数</button>
+<button class="btn-grant" onclick="grantReading()">★ 手动赠送次数</button>
 </div>
 <div id="grant-result" style="color:#8c8;font-size:0.85em;"></div>
 </div>
@@ -91,7 +124,14 @@ function showToast(msg, isErr){
 function switchTab(name){
     document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active");});
     document.querySelectorAll(".tab-content").forEach(function(t){t.classList.remove("active");});
-    document.querySelector('.tab[onclick*="'+name+'"]').classList.add("active");
+    var tabs = document.querySelectorAll('.tab');
+    var names = ['devices','grant','purchases'];
+    for(var i=0;i<names.length;i++){
+        if(names[i]===name){
+            tabs[i].classList.add("active");
+            break;
+        }
+    }
     document.getElementById("tab-"+name).classList.add("active");
 }
 
@@ -99,22 +139,47 @@ function switchTab(name){
 function loadDevices(){
     fetch("/api/admin/devices").then(function(r){return r.json()}).then(function(d){
         var devs=d.devices||[];
+        // Summary
+        var total=devs.length;
+        var notVerified=0, banned=0, deducted=0;
+        devs.forEach(function(v){
+            if(!v.csv_verified) notVerified++;
+            if(v.banned) banned++;
+            if(v.deducted) deducted++;
+        });
+        document.getElementById("devices-summary").innerHTML=
+            '<div class="summary-card"><div class="num">'+total+'</div><div class="label">总设备数</div></div>'+
+            '<div class="summary-card"><div class="num">'+notVerified+'</div><div class="label">待核对</div></div>'+
+            '<div class="summary-card"><div class="num">'+banned+'</div><div class="label">已封禁</div></div>'+
+            '<div class="summary-card"><div class="num">'+deducted+'</div><div class="label">已扣次</div></div>';
+
         var html="";
         if(devs.length===0){html="<p class='empty'>暂无设备记录</p>";}
         else{
-            html="<table><tr><th>设备ID</th><th>IP</th><th>总次数</th><th>已用</th><th>CSV核对</th><th>操作</th></tr>";
+            html="<table><tr><th>设备ID</th><th>IP</th><th>总次数</th><th>已用</th><th>状态</th><th>操作</th></tr>";
             devs.forEach(function(v){
-                var status=v.banned?"<span class='badge banned'>已禁止</span>":(v.csv_verified?"<span class='badge verified'>已验证</span>":"<span class='badge not-verified'>未核对</span>");
+                var status="";
+                if(v.banned){
+                    status="<span class='badge banned'>已封禁</span>";
+                } else if(v.deducted){
+                    status="<span class='badge deducted'>已扣次</span>";
+                } else if(v.csv_verified){
+                    status="<span class='badge verified'>已验证</span>";
+                } else {
+                    status="<span class='badge not-verified'>待核对</span>";
+                }
                 var actions="";
                 if(v.banned){
-                    actions='<button class="btn btn-unban" onclick="unbanDev(\''+v.device_id+'\')">解禁</button>';
+                    actions='<button class="btn btn-unban" onclick="unbanDev(\''+v.device_id+'\')">解封</button>';
                 } else if(!v.csv_verified){
-                    actions='<button class="btn btn-verify" onclick="verifyCsv(\''+v.device_id+'\')">确认已付款</button> ';
-                    actions+='<button class="btn btn-ban" onclick="banDev(\''+v.device_id+'\')">没付款，禁止</button>';
+                    actions+='<button class="btn btn-verify" onclick="verifyCsv(\''+v.device_id+'\')">标记验证</button> ';
+                    actions+='<button class="btn btn-deduct" onclick="deductDev(\''+v.device_id+'\')">扣除次数</button> ';
+                    actions+='<button class="btn btn-ban" onclick="banDev(\''+v.device_id+'\')">封禁</button>';
                 } else {
-                    actions='<span style="color:#6a5a7a;">已核对</span>';
+                    actions='<span style="color:#6a5a7a;">已完成</span>';
                 }
-                html+='<tr><td style="font-size:0.7em;color:#7a6a8a;">'+v.device_id.substr(0,20)+'...</td><td>'+v.ip+'</td><td>'+v.total_readings+'</td><td>'+v.used+'</td><td>'+status+'</td><td>'+actions+'</td></tr>';
+                html+='<tr><td style="font-size:0.7em;color:#7a6a8a;word-break:break-all;">'+v.device_id.substr(0,24)+'...</td>'+
+                    '<td>'+v.ip+'</td><td>'+v.total_readings+'</td><td>'+v.used+'</td><td>'+status+'</td><td>'+actions+'</td></tr>';
             });
             html+="</table>";
         }
@@ -127,17 +192,89 @@ function loadDevices(){
 function banDev(id){
     fetch("/api/admin/ban",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_id:id})})
     .then(function(r){return r.json()}).then(function(d){
-        if(d.success){showToast("已禁止该设备");loadDevices();loadPurchases();}
+        if(d.success){showToast("已封禁该设备");loadDevices();loadPurchases();}
     });
 }
 function unbanDev(id){
     fetch("/api/admin/unban",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_id:id})})
-    .then(function(r){return r.json()}).then(function(d){if(d.success){showToast("已解禁");loadDevices();loadPurchases();}});
+    .then(function(r){return r.json()}).then(function(d){if(d.success){showToast("已解封");loadDevices();loadPurchases();}});
 }
 function verifyCsv(id){
     fetch("/api/admin/verify-csv",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_id:id})})
-    .then(function(r){return r.json()}).then(function(d){if(d.success){showToast("已标记为已验证");loadDevices();loadPurchases();}});
+    .then(function(r){return r.json()}).then(function(d){if(d.success){showToast("已标记为通过CSV验证");loadDevices();loadPurchases();}});
 }
+function deductDev(id){
+    if(!confirm("确定要扣除该设备所有剩余次数吗？此操作不可撤销！")) return;
+    fetch("/api/admin/deduct",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_id:id})})
+    .then(function(r){return r.json()}).then(function(d){
+        if(d.success){showToast("已扣除该设备所有剩余次数");loadDevices();loadPurchases();}
+        else{showToast("操作失败",true);}
+    }).catch(function(){showToast("网络错误",true);});
+}
+
+// ===== CSV Upload =====
+function handleCsvUpload(event){
+    var file=event.target.files[0];
+    if(!file) return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+        var text=e.target.result;
+        var lines=text.split("\\n").filter(function(l){return l.trim().length>0;});
+        var deviceIds=[];
+        for(var i=0;i<lines.length;i++){
+            var firstCol=lines[i].split(",")[0].trim();
+            if(firstCol && firstCol!==firstCol.toUpperCase() && firstCol.indexOf("device")<0){
+                // Skip header if it looks like a header column name
+                deviceIds.push(firstCol);
+            } else if(i>0 || firstCol.indexOf("device")<0){
+                deviceIds.push(firstCol);
+            }
+        }
+        if(deviceIds.length===0){
+            document.getElementById("csv-result").innerHTML='<div class="csv-result warn">CSV 中没有找到有效的 device_id</div>';
+            return;
+        }
+        document.getElementById("csv-result").innerHTML='<p style="color:#a090b0;">正在验证 '+deviceIds.length+' 个设备...</p>';
+        fetch("/api/admin/verify-csv-bulk",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({device_ids:deviceIds})
+        }).then(function(r){return r.json()}).then(function(d){
+            if(d.success){
+                var html='<div class="csv-result ok">'+
+                    '✅ CSV 核验完成<br>'+
+                    '&nbsp;&nbsp;CSV 中共 '+d.total_in_csv+' 条记录<br>'+
+                    '&nbsp;&nbsp;匹配到 '+d.matched+' 个设备<br>'+
+                    (d.unmatched>0?'&nbsp;&nbsp;<span style="color:#da8;">未匹配 '+d.unmatched+' 条（这些 device_id 不在系统中）</span>':'')+
+                    '</div>';
+                document.getElementById("csv-result").innerHTML=html;
+                loadDevices();
+            } else {
+                document.getElementById("csv-result").innerHTML='<div class="csv-result warn">CSV 验证请求失败</div>';
+            }
+        }).catch(function(){
+            document.getElementById("csv-result").innerHTML='<div class="csv-result warn">网络错误，请重试</div>';
+        });
+    };
+    reader.readAsText(file);
+}
+
+// Drag and drop support
+(function(){
+    var area=document.getElementById("csv-upload-area");
+    if(!area) return;
+    area.addEventListener("dragover",function(e){e.preventDefault();area.classList.add("dragover");});
+    area.addEventListener("dragleave",function(){area.classList.remove("dragover");});
+    area.addEventListener("drop",function(e){
+        e.preventDefault();
+        area.classList.remove("dragover");
+        var files=e.dataTransfer.files;
+        if(files.length>0){
+            document.getElementById("csv-file").files=files;
+            handleCsvUpload({target:{files:files}});
+        }
+    });
+})();
 
 // ===== Manual grant =====
 function grantReading(){
@@ -146,9 +283,13 @@ function grantReading(){
     btn.disabled=true;btn.textContent="处理中...";
     fetch("/api/admin/grant",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan:plan})})
     .then(function(r){return r.json()}).then(function(d){
-        if(d.success){document.getElementById("grant-result").textContent="已添加 "+d.readings+" 次 (ID: "+d.purchase_id+")";showToast("加次数成功");loadPurchases();loadDevices();}
+        if(d.success){
+            document.getElementById("grant-result").textContent="✅ 已赠送 "+d.readings+" 次 (ID: "+d.purchase_id+")";
+            showToast("手动赠送成功");
+            loadPurchases();loadDevices();
+        }
     }).catch(function(){showToast("请求失败",true);})
-    .finally(function(){btn.disabled=false;btn.textContent="确认到账，手动加次数";});
+    .finally(function(){btn.disabled=false;btn.textContent="★ 手动赠送次数";});
 }
 
 // ===== Purchases =====
@@ -157,11 +298,12 @@ function loadPurchases(){
         var ps=d.purchases||[];var html="";
         if(ps.length===0){html="<p class='empty'>暂无记录</p>";}
         else{
-            html="<table><tr><th>ID</th><th>方案</th><th>来源</th><th>已用/总数</th><th>设备</th><th>时间</th></tr>";
+            html="<table><tr><th>ID</th><th>套餐</th><th>来源</th><th>已用/总数</th><th>设备</th><th>时间</th></tr>";
             ps.forEach(function(p){
-                var src=p.manual?"<span class='badge trust'>信任</span>":"<span style='color:#7a6a8a;'>Stripe</span>";
-                if(p.banned) src+=" <span class='badge banned'>禁止</span>";
-                else if(!p.csv_verified) src+=" <span class='badge not-verified'>未核对</span>";
+                var src=p.manual?"<span class='badge trust'>信任付款</span>":"<span style='color:#7a6a8a;'>Stripe</span>";
+                if(p.banned) src+=" <span class='badge banned'>已封禁</span>";
+                else if(p.deducted) src+=" <span class='badge deducted'>已扣次</span>";
+                else if(!p.csv_verified) src+=" <span class='badge not-verified'>待核对</span>";
                 html+="<tr><td style='font-size:0.7em;color:#7a6a8a;'>"+p.id+"</td><td>"+p.plan+"</td><td>"+src+"</td><td>"+(p.readings-p.remaining)+"/"+p.readings+"</td><td style='font-size:0.7em;'>"+(p.device_id||"-")+"</td><td style='font-size:0.7em;'>"+(p.created||"-")+"</td></tr>";
             });
             html+="</table>";

@@ -1,412 +1,478 @@
-﻿import random
+import random
+
 import json
+
 import os
+
 import logging
+
 from pathlib import Path
+
 from fastapi import FastAPI, Request
+
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
+
 from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel
 
+
+
 from app.cards import ALL_CARDS
+
 from dotenv import load_dotenv
 
+
+
 # 启动时加载 .env 文件到环境变量，确保所有模块都能读到
+
 _env_path = Path(__file__).parent.parent / ".env"
+
 if _env_path.exists():
+
     load_dotenv(_env_path)
+
     logging.info(f"Loaded environment from {_env_path}")
+
 else:
+
     logging.warning(f".env file not found at {_env_path}")
+
+
 
 from app.deepseek import get_reading, get_reading_stream
 
+
+
 from starlette.middleware.base import BaseHTTPMiddleware
 
+
+
 class CharsetMiddleware(BaseHTTPMiddleware):
+
     async def dispatch(self, request, call_next):
+
         response = await call_next(request)
+
         ct = response.headers.get("content-type", "")
+
         if ct.startswith("text/javascript") or ct.startswith("application/javascript"):
+
             if "; charset=" not in ct:
+
                 response.headers["content-type"] = ct + "; charset=utf-8"
+
         return response
 
+
+
 logging.basicConfig(level=logging.INFO)
+
 logging.getLogger().addHandler(logging.FileHandler(Path(__file__).parent.parent / "server.log"))
+
 logger = logging.getLogger(__name__)
 
+
+
 app = FastAPI(title="星语塔罗", description="塔罗占卜 AI 深度解读")
+
 app.add_middleware(CharsetMiddleware)
 
+
+
 # 请求模型
+
 class DrawRequest(BaseModel):
+
     count: int = 3
+
     card_ids: list = None
 
+
+
 class ReadingRequest(BaseModel):
+
     cards: list
+
     category: str
+
     question: str = ""
 
+
+
 # 静态文件服务
+
 static_dir = Path(__file__).parent.parent / "static"
+
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
+
+
 @app.get("/", response_class=HTMLResponse)
+
 async def root():
+
     index_path = static_dir / "index.html"
+
     if index_path.exists():
+
         return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+
     return HTMLResponse(content="<h1>星语塔罗</h1><p>正在加载...</p>")
 
+
+
 @app.get("/api/health")
+
 async def health():
+
     return {"status": "ok", "cards_count": len(ALL_CARDS)}
 
+
+
 @app.post("/api/draw")
+
 async def draw_cards(req: DrawRequest):
+
     """随机抽取三张牌，每张牌随机正位或逆位"""
+
     count = min(req.count, 3)
+
     if req.card_ids:
+
         drawn = [card for card in ALL_CARDS if card["id"] in req.card_ids]
+
         random.shuffle(drawn)
+
     else:
+
         drawn = random.sample(ALL_CARDS, count)
 
+
+
     result = []
+
     for card in drawn:
+
         card_copy = dict(card)
+
         card_copy["orientation"] = random.choice(["正位", "逆位"])
+
         result.append(card_copy)
+
+
 
     return {"cards": result}
 
+
+
 class CreateCheckoutRequest(BaseModel):
+
     plan: str
+
     base_url: str = ""
+
     category: str = ""
+
     question: str = ""
+
+
 
 class VerifyPaymentRequest(BaseModel):
+
     session_id: str
+
     plan: str
 
+
+
 class CheckUsageRequest(BaseModel):
+
     purchase_id: str
+
+
 
 class CheckPaymentRequest(BaseModel):
+
     intent_id: str
 
+
+
 class UseReadingRequest(BaseModel):
+
     purchase_id: str
 
+
+
 class ReadingStreamRequest(BaseModel):
+
     cards: list
+
     category: str
+
     question: str = ""
 
+
+
 @app.post("/api/reading/stream")
+
 async def reading_stream(req: ReadingStreamRequest):
+
     """流式获取 AI 解读"""
+
     cards_data = req.cards
+
     category = req.category
+
     question = req.question
+
+
 
     return StreamingResponse(
+
         get_reading_stream(cards_data, category, question),
+
         media_type="text/event-stream",
+
         headers={
+
             "Cache-Control": "no-cache",
+
             "Connection": "keep-alive",
+
             "X-Accel-Buffering": "no"
+
         }
+
     )
 
+
+
 @app.post("/api/reading")
+
 async def reading(req: ReadingRequest):
+
     """一次性获取 AI 解读"""
+
     cards_data = req.cards
+
     category = req.category
+
     question = req.question
+
     logger.info(f"Reading request: category={category}, cards={len(cards_data)}, question='{question[:50]}...'")
 
+
+
     result = await get_reading(cards_data, category, question)
+
     logger.info(f"Reading result: {'success' if 'reading' in result else 'error: ' + result.get('error', 'unknown')}")
+
     return result
 
+
+
 @app.get("/api/cards")
+
 async def get_all_cards_api():
+
     """获取所有塔罗牌完整数据"""
+
     return {"cards": ALL_CARDS}
 
 
+
+
+
 # Stripe payment endpoints
-from app.payment import stripe, PLANS, record, use_one, remaining as get_remaining, store_session, get_session
 
-@app.post("/api/create-checkout")
-async def create_checkout(req: CreateCheckoutRequest):
-    plan_info = PLANS.get(req.plan)
-    if not plan_info:
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
-    base_url = req.base_url or "http://127.0.0.1:5678"
-    try:
-        session = stripe.checkout.Session.create(
-            mode="payment",
-            payment_method_types=["card", "alipay"],
-            line_items=[{
-                "price_data": {
-                    "currency": "cny",
-                    "product_data": {"name": plan_info["name"]},
-                    "unit_amount": plan_info["amount_cny"],
-                },
-                "quantity": 1,
-            }],
-            metadata={"plan": req.plan, "category": req.category, "question": req.question[:200]},
-            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
-            cancel_url=base_url + "/",
-        )
-        return {"url": session.url, "session_id": session.id}
-    except Exception as e:
-        logger.error(f"Stripe checkout error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-@app.post("/api/create-alipay-qr")
-async def create_alipay_qr(req: CreateCheckoutRequest):
-    plan_info = PLANS.get(req.plan)
-    if not plan_info:
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
-    base_url = req.base_url or "http://127.0.0.1:5678"
-    try:
-        session = stripe.checkout.Session.create(
-            mode="payment",
-            payment_method_types=["alipay"],
-            line_items=[{
-                "price_data": {
-                    "currency": "cny",
-                    "product_data": {"name": plan_info["name"]},
-                    "unit_amount": plan_info["amount_cny"],
-                },
-                "quantity": 1,
-            }],
-            metadata={"plan": req.plan, "category": req.category, "question": req.question[:200]},
-            success_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
-            cancel_url=base_url + "/",
-        )
-        qr_data = None
-        try:
-            import qrcode
-            from io import BytesIO
-            import base64 as b64
-            qr = qrcode.QRCode(box_size=8, border=2)
-            qr.add_data(session.url)
-            qr.make(fit=True)
-            img = qr.make_image(fill_color="black", back_color="white")
-            buf = BytesIO()
-            img.save(buf, format="PNG")
-            qr_data = "data:image/png;base64," + b64.b64encode(buf.getvalue()).decode()
-        except Exception:
-            qr_data = None
-        return {"session_id": session.id, "session_url": session.url, "qr_code": qr_data}
-    except Exception as e:
-        logger.error(f"Alipay QR error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-@app.post("/api/check-alipay-status")
-async def check_alipay_status(req: CheckPaymentRequest):
-    try:
-        session = stripe.checkout.Session.retrieve(req.intent_id)
-        if session.payment_status == "paid":
-            plan = session.metadata.get("plan", "") if session.metadata else ""
-            # Use the session_id as the record key
-            pid = record(req.intent_id, plan)
-            return {"status": "succeeded", "purchase_id": pid, "remaining": PLANS.get(plan, {}).get("readings", 0)}
-        elif session.status == "expired" or session.status == "canceled":
-            return {"status": "failed"}
-        else:
-            return {"status": "pending"}
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-
-@app.get("/api/stripe-key")
-async def get_stripe_key():
-    pk = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
-    if not pk:
-        _env_path = Path(__file__).parent.parent / ".env"
-        if _env_path.exists():
-            for _line in _env_path.read_text(encoding="utf-8").splitlines():
-                _line = _line.strip()
-                if _line.startswith("STRIPE_PUBLISHABLE_KEY="):
-                    pk = _line.split("=", 1)[1].strip().strip(chr(34)).strip(chr(39))
-                    break
-    return {"publishable_key": pk}
-
-@app.post("/api/create-embedded-checkout")
-async def create_embedded_checkout(req: CreateCheckoutRequest):
-    plan_info = PLANS.get(req.plan)
-    if not plan_info:
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
-    base_url = req.base_url or "http://127.0.0.1:5678"
-    try:
-        session = stripe.checkout.Session.create(
-            mode="payment",
-            payment_method_types=["card", "alipay"],
-            line_items=[{
-                "price_data": {
-                    "currency": "cny",
-                    "product_data": {"name": plan_info["name"]},
-                    "unit_amount": plan_info["amount_cny"],
-                },
-                "quantity": 1,
-            }],
-            ui_mode="embedded",
-            return_url=base_url + "/?session_id={CHECKOUT_SESSION_ID}&plan=" + req.plan,
-        )
-        return {"client_secret": session.client_secret, "session_id": session.id}
-    except Exception as e:
-        logger.error(f"Stripe embedded checkout error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
+from app.payment import PLANS, use_one, remaining as get_remaining
 
 
-@app.post("/api/verify-payment")
-async def verify_payment(req: VerifyPaymentRequest):
-    try:
-        session = stripe.checkout.Session.retrieve(req.session_id)
-        if session.payment_status == "paid":
-            meta = session.get("metadata", {}) or {}
-            cat = meta.get("category", "")
-            q = meta.get("question", "")
-            pid = record(req.session_id, req.plan, cat, q)
-            return {"success": True, "purchase_id": pid, "remaining": PLANS[req.plan]["readings"], "category": cat, "question": q}
-        return {"success": False, "error": "payment not complete"}
-    except Exception as e:
-        return JSONResponse({"success": False, "error": str(e)}, status_code=400)
 
 @app.post("/api/check-usage")
+
 async def check_usage(req: CheckUsageRequest):
+
     r = get_remaining(req.purchase_id)
+
     return {"remaining": r}
 
+
+
 @app.post("/api/use-reading")
+
 async def use_reading(req: UseReadingRequest):
+
     ok, r = use_one(req.purchase_id)
+
     return {"success": ok, "remaining": r}
 
 
 
-@app.post("/api/create-mobile-payment")
-async def create_mobile_payment(req: CreateCheckoutRequest):
-    plan_info = PLANS.get(req.plan)
-    if not plan_info:
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
-    base_url = req.base_url or "http://127.0.0.1:5678"
-    try:
-        intent = stripe.PaymentIntent.create(
-            amount=plan_info["amount_cny"],
-            currency="cny",
-            payment_method_types=["alipay"],
-            description=plan_info["name"],
-            metadata={"plan": req.plan},
-            )
-        confirmed = stripe.PaymentIntent.confirm(
-            intent.id,
-            payment_method_data={"type": "alipay"},
-            return_url=base_url + "/?pi=" + intent.id + "&plan=" + req.plan + "&cat=" + req.category + "&q=" + req.question[:200],
-        )
-        native_url = None
-        if confirmed.next_action and confirmed.next_action.alipay_handle_redirect:
-            native_url = confirmed.next_action.alipay_handle_redirect.native_url
-        store_session(intent.id, req.category, req.question)
-        return {"intent_id": confirmed.id, "native_url": native_url}
-    except Exception as e:
-        logger.error(f"Mobile payment error: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
 
-@app.post("/api/verify-pi")
-async def verify_pi(req: CheckPaymentRequest):
-    try:
-        intent = stripe.PaymentIntent.retrieve(req.intent_id)
-        if intent.status in ("succeeded", "processing"):
-            plan = intent.metadata.get("plan", "")
-            if plan in PLANS:
-                pid = record(intent.id, plan, sess.get("category", ""), sess.get("question", ""))
-                sess = get_session(req.intent_id)
-                return {"success": True, "purchase_id": pid, "remaining": PLANS[plan]["readings"], "category": sess.get("category", ""), "question": sess.get("question", "")}
-        return {"success": False, "error": "payment not complete"}
-    except Exception as e:
-        return JSONResponse({"success": False, "error": str(e)}, status_code=400)
 
 
 
 # ===== Admin & Trust-based Payment =====
-from app.payment import manual_grant, list_purchases, is_banned, ban_device, unban_device, mark_csv_verified, get_device_summary
+
+from app.payment import manual_grant, list_purchases, is_banned, ban_device, unban_device, mark_csv_verified, get_device_summary, deduct_device_credits, mark_bulk_csv_verified
+
+
 
 @app.get("/admin")
+
 async def admin_page():
+
     admin_path = Path(__file__).parent.parent / "static" / "admin.html"
+
     if admin_path.exists():
+
         return HTMLResponse(content=admin_path.read_text(encoding="utf-8"))
+
     return HTMLResponse(content="<h1>管理后台</h1><p>admin.html not found</p>")
 
+
+
 @app.get("/api/admin/purchases")
+
 async def admin_list_purchases():
+
     return {"purchases": list_purchases()}
 
+
+
 @app.get("/api/admin/devices")
+
 async def admin_list_devices():
+
     return {"devices": get_device_summary()}
 
+
+
 class GrantRequest(BaseModel):
+
     plan: str
 
+
+
 @app.post("/api/admin/grant")
+
 async def admin_grant(req: GrantRequest):
+
     plan_info = PLANS.get(req.plan)
+
     if not plan_info:
+
         return JSONResponse({"error": "invalid plan"}, status_code=400)
+
     pid = manual_grant(req.plan)
+
     return {"success": True, "purchase_id": pid, "plan": req.plan, "readings": plan_info["readings"]}
 
+
+
 @app.post("/api/admin/ban")
+
 async def admin_ban_device(req: Request):
+
     body = await req.json()
+
     device_id = body.get("device_id", "")
+
     ip = body.get("ip", "")
+
     ban_device(device_id, ip)
+
     return {"success": True}
+
+
 
 @app.post("/api/admin/unban")
+
 async def admin_unban_device(req: Request):
+
     body = await req.json()
+
     device_id = body.get("device_id", "")
+
     unban_device(device_id)
+
     return {"success": True}
+
+
 
 @app.post("/api/admin/verify-csv")
+
 async def admin_verify_csv(req: Request):
+
     body = await req.json()
+
     device_id = body.get("device_id", "")
+
     mark_csv_verified(device_id)
+
     return {"success": True}
 
+
+
 @app.post("/api/trust-payment")
+
 async def trust_payment(request: Request):
+
     body = await request.json()
+
     plan = body.get("plan", "")
+
     device_id = body.get("device_id", "")
+
     category = body.get("category", "")
+
     question = body.get("question", "")
+
     plan_info = PLANS.get(plan)
+
     if not plan_info:
+
         return JSONResponse({"error": "invalid plan"}, status_code=400)
+
     ip = request.client.host if request.client else ""
+
     if is_banned(device_id, ip):
+
         return JSONResponse({"error": "banned", "message": "该设备已被禁止使用"}, status_code=403)
+
     pid = manual_grant(plan, device_id, ip)
+
     return {"success": True, "purchase_id": pid, "remaining": plan_info["readings"], "plan": plan, "readings": plan_info["readings"]}
 
+
+
+
+class DeductRequest(BaseModel):
+    device_id: str
+
+@app.post("/api/admin/deduct")
+async def admin_deduct(req: DeductRequest):
+    changed = deduct_device_credits(req.device_id)
+    return {"success": changed}
+
+class UploadCsvRequest(BaseModel):
+    device_ids: list
+
+@app.post("/api/admin/verify-csv-bulk")
+async def admin_verify_csv_bulk(req: UploadCsvRequest):
+    result = mark_bulk_csv_verified(req.device_ids)
+    return {"success": True, **result}
+
+
 # ===== WSGI entry point for PythonAnywhere =====
+
 from a2wsgi import ASGIMiddleware
+
 application = ASGIMiddleware(app)
+
+
+
 
 

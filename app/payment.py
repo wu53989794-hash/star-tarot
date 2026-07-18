@@ -1,23 +1,7 @@
-﻿import json
+import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-import stripe
-
-import os
-from pathlib import Path
-
-# Read Stripe key from env or .env
-_stripe_key = os.environ.get("STRIPE_SECRET_KEY", "")
-if not _stripe_key:
-    _env_path = Path(__file__).parent.parent / ".env"
-    if _env_path.exists():
-        for _line in _env_path.read_text(encoding="utf-8").splitlines():
-            _line = _line.strip()
-            if _line.startswith("STRIPE_SECRET_KEY="):
-                _stripe_key = _line.split("=", 1)[1].strip().strip('"').strip("'")
-                break
-stripe.api_key = _stripe_key
 
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
@@ -42,24 +26,6 @@ def remaining(purchase_id):
     p = d.get(purchase_id)
     return p["remaining"] if p else 0
 
-def _find_existing(session_id):
-    d = _load()
-    for pid, info in d.items():
-        if info.get("session_id") == session_id:
-            return pid
-    return None
-
-def record(session_id, plan, category="", question=""):
-    existing = _find_existing(session_id)
-    if existing:
-        return existing
-    d = _load()
-    pid = uuid.uuid4().hex[:12]
-    info = PLANS[plan]
-    d[pid] = {"session_id": session_id, "plan": plan, "readings": info["readings"], "remaining": info["readings"], "created": datetime.now().isoformat(), "category": category, "question": question}
-    _save(d)
-    return pid
-
 def use_one(purchase_id):
     d = _load()
     p = d.get(purchase_id)
@@ -69,41 +35,8 @@ def use_one(purchase_id):
     _save(d)
     return True, p["remaining"]
 
-
-def store_session(intent_id, category, question):
-    """Store session data (category, question) associated with a PaymentIntent ID."""
-    import json, os
-    from pathlib import Path
-    BASE_DIR = Path(__file__).parent.parent
-    DATA_DIR = BASE_DIR / "data"
-    DATA_DIR.mkdir(exist_ok=True)
-    SESSIONS_FILE = DATA_DIR / "sessions.json"
-    if SESSIONS_FILE.exists():
-        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
-    else:
-        data = {}
-    data[intent_id] = {"category": category, "question": question}
-    SESSIONS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-def get_session(intent_id):
-    """Retrieve session data for a PaymentIntent ID."""
-    import json
-    from pathlib import Path
-    BASE_DIR = Path(__file__).parent.parent
-    SESSIONS_FILE = BASE_DIR / "data" / "sessions.json"
-    if SESSIONS_FILE.exists():
-        data = json.loads(SESSIONS_FILE.read_text(encoding="utf-8"))
-        return data.get(intent_id, {})
-    return {}
-
-
-
-
-
-# ===== Trust-based payment & admin =====
-
 def manual_grant(plan, device_id="", ip=""):
-    """Manually grant a purchase record (used when admin confirms payment)."""
+    """Manually grant a purchase record (trust payment)."""
     d = _load()
     pid = uuid.uuid4().hex[:12]
     info = PLANS[plan]
@@ -118,10 +51,40 @@ def manual_grant(plan, device_id="", ip=""):
         "device_id": device_id,
         "ip": ip,
         "csv_verified": False,
-        "banned": False
+        "banned": False,
+        "deducted": False
     }
     _save(d)
     return pid
+
+def deduct_device_credits(device_id):
+    """将某设备所有信任购买记录的剩余次数清零"""
+    d = _load()
+    changed = False
+    for pid, info in d.items():
+        if info.get("device_id") == device_id:
+            info["remaining"] = 0
+            info["deducted"] = True
+            changed = True
+    if changed:
+        _save(d)
+    return changed
+
+def mark_bulk_csv_verified(device_ids):
+    """批量标记 CSV 中出现的 device_id 为已验证"""
+    d = _load()
+    matched = 0
+    seen = set()
+    id_set = set(device_ids)
+    for pid, info in d.items():
+        dev = info.get("device_id", "")
+        if dev and dev in id_set and dev not in seen:
+            info["csv_verified"] = True
+            seen.add(dev)
+            matched += 1
+    if matched > 0:
+        _save(d)
+    return {"matched": matched, "unmatched": len(id_set) - matched, "total_in_csv": len(id_set)}
 
 def list_purchases():
     """List all purchases for admin view."""
@@ -139,6 +102,7 @@ def list_purchases():
             "banned": info.get("banned", False),
             "device_id": info.get("device_id", ""),
             "ip": info.get("ip", ""),
+            "deducted": info.get("deducted", False),
         })
     result.sort(key=lambda x: x.get("created", ""), reverse=True)
     return result
@@ -205,12 +169,14 @@ def get_device_summary():
         if not dev:
             continue
         if dev not in devices:
-            devices[dev] = {"device_id": dev, "total_readings": 0, "used": 0, "csv_verified": True, "banned": False, "ip": info.get("ip", ""), "purchases": []}
+            devices[dev] = {"device_id": dev, "total_readings": 0, "used": 0, "csv_verified": True, "banned": False, "deducted": False, "ip": info.get("ip", ""), "purchases": []}
         devices[dev]["total_readings"] += info.get("readings", 0)
         devices[dev]["used"] += info.get("readings", 0) - info.get("remaining", 0)
         if not info.get("csv_verified", False):
             devices[dev]["csv_verified"] = False
         if info.get("banned", False):
             devices[dev]["banned"] = True
+        if info.get("deducted", False):
+            devices[dev]["deducted"] = True
         devices[dev]["purchases"].append(pid)
     return list(devices.values())
