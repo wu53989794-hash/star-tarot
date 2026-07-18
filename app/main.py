@@ -1,477 +1,106 @@
-import random
-
-import json
-
-import os
-
-import logging
-
+import random, json, os, logging
 from pathlib import Path
-
-from fastapi import FastAPI, Request
-
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
-
-from fastapi.staticfiles import StaticFiles
-
-from pydantic import BaseModel
-
-
-
+from flask import Flask, request, jsonify, Response, send_from_directory
 from app.cards import ALL_CARDS
-
 from dotenv import load_dotenv
-
-
-
-# 启动时加载 .env 文件到环境变量，确保所有模块都能读到
-
+from app.deepseek import get_reading_sync, get_reading_stream_sync
 _env_path = Path(__file__).parent.parent / ".env"
-
 if _env_path.exists():
-
     load_dotenv(_env_path)
-
     logging.info(f"Loaded environment from {_env_path}")
-
-else:
-
-    logging.warning(f".env file not found at {_env_path}")
-
-
-
-from app.deepseek import get_reading, get_reading_stream
-
-
-
-from starlette.middleware.base import BaseHTTPMiddleware
-
-
-
-class CharsetMiddleware(BaseHTTPMiddleware):
-
-    async def dispatch(self, request, call_next):
-
-        response = await call_next(request)
-
-        ct = response.headers.get("content-type", "")
-
-        if ct.startswith("text/javascript") or ct.startswith("application/javascript"):
-
-            if "; charset=" not in ct:
-
-                response.headers["content-type"] = ct + "; charset=utf-8"
-
-        return response
-
-
-
 logging.basicConfig(level=logging.INFO)
-
-logging.getLogger().addHandler(logging.FileHandler(Path(__file__).parent.parent / "server.log"))
-
+try: logging.getLogger().addHandler(logging.FileHandler(Path(__file__).parent.parent / "server.log"))
+except: pass
 logger = logging.getLogger(__name__)
-
-
-
-app = FastAPI(title="星语塔罗", description="塔罗占卜 AI 深度解读")
-
-app.add_middleware(CharsetMiddleware)
-
-
-
-# 请求模型
-
-class DrawRequest(BaseModel):
-
-    count: int = 3
-
-    card_ids: list = None
-
-
-
-class ReadingRequest(BaseModel):
-
-    cards: list
-
-    category: str
-
-    question: str = ""
-
-
-
-# 静态文件服务
-
+app = Flask(__name__, static_folder=None)
 static_dir = Path(__file__).parent.parent / "static"
-
-app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
-
-
-@app.get("/", response_class=HTMLResponse)
-
-async def root():
-
-    index_path = static_dir / "index.html"
-
-    if index_path.exists():
-
-        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
-
-    return HTMLResponse(content="<h1>星语塔罗</h1><p>正在加载...</p>")
-
-
-
-@app.get("/api/health")
-
-async def health():
-
-    return {"status": "ok", "cards_count": len(ALL_CARDS)}
-
-
-
-@app.post("/api/draw")
-
-async def draw_cards(req: DrawRequest):
-
-    """随机抽取三张牌，每张牌随机正位或逆位"""
-
-    count = min(req.count, 3)
-
-    if req.card_ids:
-
-        drawn = [card for card in ALL_CARDS if card["id"] in req.card_ids]
-
-        random.shuffle(drawn)
-
-    else:
-
-        drawn = random.sample(ALL_CARDS, count)
-
-
-
-    result = []
-
-    for card in drawn:
-
-        card_copy = dict(card)
-
-        card_copy["orientation"] = random.choice(["正位", "逆位"])
-
-        result.append(card_copy)
-
-
-
-    return {"cards": result}
-
-
-
-class CreateCheckoutRequest(BaseModel):
-
-    plan: str
-
-    base_url: str = ""
-
-    category: str = ""
-
-    question: str = ""
-
-
-
-class VerifyPaymentRequest(BaseModel):
-
-    session_id: str
-
-    plan: str
-
-
-
-class CheckUsageRequest(BaseModel):
-
-    purchase_id: str
-
-
-
-class CheckPaymentRequest(BaseModel):
-
-    intent_id: str
-
-
-
-class UseReadingRequest(BaseModel):
-
-    purchase_id: str
-
-
-
-class ReadingStreamRequest(BaseModel):
-
-    cards: list
-
-    category: str
-
-    question: str = ""
-
-
-
-@app.post("/api/reading/stream")
-
-async def reading_stream(req: ReadingStreamRequest):
-
-    """流式获取 AI 解读"""
-
-    cards_data = req.cards
-
-    category = req.category
-
-    question = req.question
-
-
-
-    return StreamingResponse(
-
-        get_reading_stream(cards_data, category, question),
-
-        media_type="text/event-stream",
-
-        headers={
-
-            "Cache-Control": "no-cache",
-
-            "Connection": "keep-alive",
-
-            "X-Accel-Buffering": "no"
-
-        }
-
-    )
-
-
-
-@app.post("/api/reading")
-
-async def reading(req: ReadingRequest):
-
-    """一次性获取 AI 解读"""
-
-    cards_data = req.cards
-
-    category = req.category
-
-    question = req.question
-
-    logger.info(f"Reading request: category={category}, cards={len(cards_data)}, question='{question[:50]}...'")
-
-
-
-    result = await get_reading(cards_data, category, question)
-
-    logger.info(f"Reading result: {'success' if 'reading' in result else 'error: ' + result.get('error', 'unknown')}")
-
-    return result
-
-
-
-@app.get("/api/cards")
-
-async def get_all_cards_api():
-
-    """获取所有塔罗牌完整数据"""
-
-    return {"cards": ALL_CARDS}
-
-
-
-
-
-# Stripe payment endpoints
-
-from app.payment import PLANS, use_one, remaining as get_remaining
-
-
-
-@app.post("/api/check-usage")
-
-async def check_usage(req: CheckUsageRequest):
-
-    r = get_remaining(req.purchase_id)
-
-    return {"remaining": r}
-
-
-
-@app.post("/api/use-reading")
-
-async def use_reading(req: UseReadingRequest):
-
-    ok, r = use_one(req.purchase_id)
-
-    return {"success": ok, "remaining": r}
-
-
-
-
-
-
-
-# ===== Admin & Trust-based Payment =====
-
-from app.payment import manual_grant, list_purchases, is_banned, ban_device, unban_device, mark_csv_verified, get_device_summary, deduct_device_credits, mark_bulk_csv_verified
-
-
-
-@app.get("/admin")
-
-async def admin_page():
-
-    admin_path = Path(__file__).parent.parent / "static" / "admin.html"
-
-    if admin_path.exists():
-
-        return HTMLResponse(content=admin_path.read_text(encoding="utf-8"))
-
-    return HTMLResponse(content="<h1>管理后台</h1><p>admin.html not found</p>")
-
-
-
-@app.get("/api/admin/purchases")
-
-async def admin_list_purchases():
-
-    return {"purchases": list_purchases()}
-
-
-
-@app.get("/api/admin/devices")
-
-async def admin_list_devices():
-
-    return {"devices": get_device_summary()}
-
-
-
-class GrantRequest(BaseModel):
-
-    plan: str
-
-
-
-@app.post("/api/admin/grant")
-
-async def admin_grant(req: GrantRequest):
-
-    plan_info = PLANS.get(req.plan)
-
-    if not plan_info:
-
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
-
-    pid = manual_grant(req.plan)
-
-    return {"success": True, "purchase_id": pid, "plan": req.plan, "readings": plan_info["readings"]}
-
-
-
-@app.post("/api/admin/ban")
-
-async def admin_ban_device(req: Request):
-
-    body = await req.json()
-
-    device_id = body.get("device_id", "")
-
-    ip = body.get("ip", "")
-
-    ban_device(device_id, ip)
-
-    return {"success": True}
-
-
-
-@app.post("/api/admin/unban")
-
-async def admin_unban_device(req: Request):
-
-    body = await req.json()
-
-    device_id = body.get("device_id", "")
-
-    unban_device(device_id)
-
-    return {"success": True}
-
-
-
-@app.post("/api/admin/verify-csv")
-
-async def admin_verify_csv(req: Request):
-
-    body = await req.json()
-
-    device_id = body.get("device_id", "")
-
-    mark_csv_verified(device_id)
-
-    return {"success": True}
-
-
-
-@app.post("/api/trust-payment")
-
-async def trust_payment(request: Request):
-
-    body = await request.json()
-
-    plan = body.get("plan", "")
-
-    device_id = body.get("device_id", "")
-
-    category = body.get("category", "")
-
-    question = body.get("question", "")
-
-    plan_info = PLANS.get(plan)
-
-    if not plan_info:
-
-        return JSONResponse({"error": "invalid plan"}, status_code=400)
-
-    ip = request.client.host if request.client else ""
-
-    if is_banned(device_id, ip):
-
-        return JSONResponse({"error": "banned", "message": "该设备已被禁止使用"}, status_code=403)
-
-    pid = manual_grant(plan, device_id, ip)
-
-    return {"success": True, "purchase_id": pid, "remaining": plan_info["readings"], "plan": plan, "readings": plan_info["readings"]}
-
-
-
-
-class DeductRequest(BaseModel):
-    device_id: str
-
-@app.post("/api/admin/deduct")
-async def admin_deduct(req: DeductRequest):
-    changed = deduct_device_credits(req.device_id)
-    return {"success": changed}
-
-class UploadCsvRequest(BaseModel):
-    device_ids: list
-
-@app.post("/api/admin/verify-csv-bulk")
-async def admin_verify_csv_bulk(req: UploadCsvRequest):
-    result = mark_bulk_csv_verified(req.device_ids)
-    return {"success": True, **result}
-
-
-# ===== WSGI entry point for PythonAnywhere =====
-from a2wsgi import ASGIMiddleware
-
-application = ASGIMiddleware(app)
-
-
-
-
-
+@app.after_request
+def add_charset(response):
+    ct = response.headers.get("content-type", "")
+    if ct.startswith("text/javascript") or ct.startswith("application/javascript"):
+        if "; charset=" not in ct:
+            response.headers["content-type"] = ct + "; charset=utf-8"
+    return response
+from app.payment import PLANS, use_one, remaining as get_remaining, manual_grant, list_purchases, is_banned
+from app.payment import ban_device, unban_device, mark_csv_verified, get_device_summary, deduct_device_credits, mark_bulk_csv_verified
+@app.route("/")
+def root():
+    idx = static_dir / "index.html"
+    return (idx.read_text(encoding="utf-8"), 200, {"Content-Type": "text/html; charset=utf-8"}) if idx.exists() else ("<h1>星语塔罗</h1><p>正在加载...</p>", 200)
+@app.route("/api/health")
+def health():
+    return jsonify({"status": "ok", "cards_count": len(ALL_CARDS)})
+@app.route("/api/draw", methods=["POST"])
+def draw_cards():
+    data = request.get_json() or {}
+    count = min(data.get("count", 3), 3)
+    card_ids = data.get("card_ids")
+    drawn = [c for c in ALL_CARDS if c["id"] in card_ids] if card_ids else random.sample(ALL_CARDS, count)
+    random.shuffle(drawn)
+    result = [dict(c) | {"orientation": random.choice(["正位", "逆位"])} for c in drawn]
+    return jsonify({"cards": result})
+@app.route("/api/reading", methods=["POST"])
+def reading():
+    d = request.get_json() or {}
+    return jsonify(get_reading_sync(d.get("cards",[]), d.get("category",""), d.get("question","")))
+@app.route("/api/reading/stream", methods=["POST"])
+def reading_stream():
+    def gen():
+        d = request.get_json() or {}
+        for c in get_reading_stream_sync(d.get("cards",[]), d.get("category",""), d.get("question","")):
+            yield c
+    return Response(gen(), mimetype="text/event-stream", headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"})
+@app.route("/api/cards")
+def get_all_cards_api():
+    return jsonify({"cards": ALL_CARDS})
+@app.route("/api/check-usage", methods=["POST"])
+def check_usage():
+    return jsonify({"remaining": get_remaining((request.get_json() or {}).get("purchase_id",""))})
+@app.route("/api/use-reading", methods=["POST"])
+def use_reading():
+    ok, r = use_one((request.get_json() or {}).get("purchase_id",""))
+    return jsonify({"success": ok, "remaining": r})
+@app.route("/admin")
+def admin_page():
+    ap = static_dir / "admin.html"
+    return (ap.read_text(encoding="utf-8"), 200, {"Content-Type":"text/html; charset=utf-8"}) if ap.exists() else ("<h1>管理后台</h1><p>admin.html not found</p>", 200)
+@app.route("/api/admin/purchases")
+def admin_list_purchases():
+    return jsonify({"purchases": list_purchases()})
+@app.route("/api/admin/devices")
+def admin_list_devices():
+    return jsonify({"devices": get_device_summary()})
+@app.route("/api/admin/grant", methods=["POST"])
+def admin_grant():
+    plan = (request.get_json() or {}).get("plan","")
+    if plan not in PLANS: return jsonify({"error":"invalid plan"}), 400
+    return jsonify({"success":True,"purchase_id":manual_grant(plan),"plan":plan,"readings":PLANS[plan]["readings"]})
+@app.route("/api/admin/ban", methods=["POST"])
+def admin_ban_device():
+    d = request.get_json() or {}; ban_device(d.get("device_id",""), d.get("ip","")); return jsonify({"success":True})
+@app.route("/api/admin/unban", methods=["POST"])
+def admin_unban_device():
+    unban_device((request.get_json() or {}).get("device_id","")); return jsonify({"success":True})
+@app.route("/api/admin/verify-csv", methods=["POST"])
+def admin_verify_csv():
+    mark_csv_verified((request.get_json() or {}).get("device_id","")); return jsonify({"success":True})
+@app.route("/api/trust-payment", methods=["POST"])
+def trust_payment():
+    d = request.get_json() or {}
+    plan, dev = d.get("plan",""), d.get("device_id","")
+    if plan not in PLANS: return jsonify({"error":"invalid plan"}), 400
+    ip = request.remote_addr or ""
+    if is_banned(dev, ip): return jsonify({"error":"banned","message":"该设备已被禁止使用"}), 403
+    pid = manual_grant(plan, dev, ip)
+    return jsonify({"success":True,"purchase_id":pid,"remaining":PLANS[plan]["readings"],"plan":plan,"readings":PLANS[plan]["readings"]})
+@app.route("/api/admin/deduct", methods=["POST"])
+def admin_deduct():
+    return jsonify({"success":deduct_device_credits((request.get_json() or {}).get("device_id",""))})
+@app.route("/api/admin/verify-csv-bulk", methods=["POST"])
+def admin_verify_csv_bulk():
+    r = mark_bulk_csv_verified((request.get_json() or {}).get("device_ids",[]))
+    return jsonify({"success":True,**r})
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory(str(static_dir), filename)
+application = app
