@@ -1152,13 +1152,7 @@ function confirmTrustPayment() {
 
             // Trigger the draw+reading flow
 
-            if(state.selectedCategory && state.drawnCards && state.drawnCards.length > 0){
-
-                showStep("step-draw");
-
-                setTimeout(function(){ revealCards(); _startReading(); }, 500);
-
-            } else if(state.selectedCategory){
+            if(state.selectedCategory){
 
                 _doDrawAndRead(false);
 
