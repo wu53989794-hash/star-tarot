@@ -1976,3 +1976,26 @@ function randomDraw() {
         showPricingModal();
     }
 }
+
+
+function shuffleCards() {
+    var cards = state.drawnCards;
+    if (!cards || cards.length === 0) return;
+    var html = "";
+    cards.forEach(function(card, i) {
+        var orientation = card.orientation || "\u6b63\u4f4d";
+        var isUpright = orientation === "\u6b63\u4f4d";
+        var imgUrl = getCardImageUrl(card);
+        html += "<div class=\"reveal-card\" id=\"reveal-" + i + "\">";
+        html += "<div class=\"reveal-card-inner\">";
+        html += "<div class=\"reveal-img-wrap\"><img class=\"reveal-card-img" + (isUpright ? "" : " reversed") + "\" src=\"" + imgUrl + "\" alt=\"" + card.name + "\"></div>";
+        html += "<div class=\"reveal-name\">" + card.name + "</div>";
+        html += "<div class=\"reveal-name-en\">" + card.name_en + "</div>";
+        html += "<div class=\"reveal-orientation " + (isUpright ? "orientation-upright" : "orientation-reversed") + "\">" + orientation + "</div>";
+        html += "<div class=\"reveal-keywords\">" + card.keywords + "</div>";
+        html += "<div class=\"reveal-element\">\u5143\u7d20\uff1a" + card.element + "</div>";
+        html += "</div></div>";
+    });
+    var container = document.getElementById("revealed-cards");
+    if (container) container.innerHTML = html;
+}
