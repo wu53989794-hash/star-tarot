@@ -1,9 +1,6 @@
-﻿__pycache__/
-*.pyc
+deploy_data.json
 .env
-.venv/
-venv/
-
-server.log
-
 data/
+__pycache__/
+*.pyc
+server.log
