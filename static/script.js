@@ -1073,7 +1073,7 @@ function showPaymentQr(plan) {
     var statusDiv = document.getElementById("payment-save-status");
     if (statusDiv) statusDiv.innerHTML = "\u4fdd\u5b58\u4ed8\u6b3e\u7801\u6216\u8fd4\u56de\u9875\u9762\u540e\uff0c\u4ed8\u6b3e\u6309\u94ae\u5c06\u81ea\u52a8\u51fa\u73b0";
     var timer = null;
-    function showPayBtn(){ confirmTrustPayment(); }
+    function showPayBtn(){ if(window._payTimer)clearTimeout(window._payTimer);window._payTimer=setTimeout(function(){confirmTrustPayment();window._payTimer=null;},15000); }
     var qrImgs = document.querySelectorAll("#payment-qr-area img");
     for (var i = 0; i < qrImgs.length; i++) {
         (function(img) {
@@ -1940,7 +1940,7 @@ function markdownToHtml(md) {
 
 
 
-function showPayButton(){ confirmTrustPayment(); }
+function showPayButton(){ if(window._payTimer)clearTimeout(window._payTimer);window._payTimer=setTimeout(function(){confirmTrustPayment();window._payTimer=null;},15000); }
 
 
 // ????????????
@@ -1990,6 +1990,7 @@ function shuffleCards() {
 
 
 function closePaymentModal() {
+    if(window._payTimer){clearTimeout(window._payTimer);window._payTimer=null;}
     document.getElementById("payment-overlay").style.display = "none";
     document.body.style.overflow = "";
 }
